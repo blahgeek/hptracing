@@ -1,8 +1,9 @@
-/*
- * $File: common.cpp
- * $Date: Mon Dec 22 01:33:25 2014 +0800
- * $Author: jiakai <jia.kai66@gmail.com>
- */
+/* 
+* @Author: BlahGeek
+* @Date:   2015-01-05
+* @Last Modified by:   BlahGeek
+* @Last Modified time: 2015-01-05
+*/
 
 #include "common.h"
 

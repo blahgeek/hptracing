@@ -1,8 +1,9 @@
-/*
- * $File: common.h
- * $Date: Tue Oct 21 09:51:23 2014 +0800
- * $Author: jiakai <jia.kai66@gmail.com>
- */
+/* 
+* @Author: BlahGeek
+* @Date:   2015-01-05
+* @Last Modified by:   BlahGeek
+* @Last Modified time: 2015-01-05
+*/
 
 #ifndef __hp_common_h__
 #define __hp_common_h__ value
