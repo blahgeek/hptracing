@@ -58,4 +58,6 @@ Temporary Items
 hptest
 
 *.sublime-workspace
+build
+*.d
 

@@ -18,6 +18,7 @@ SRC_EXT = cpp
 # Set Google Test's header directory as a system directory, such that
 # the compiler doesn't generate warnings in Google Test headers.
 CPPFLAGS = -isystem $(GTEST_DIR)/include
+CPPFLAGS += $(shell pkg-config --libs --cflags eigen3)
 override OPTFLAG ?= -O2
 
 override CXXFLAGS += \

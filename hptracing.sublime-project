@@ -7,7 +7,8 @@
 			{
 				"include_dirs":
 				[
-					"tests/gtest-1.7.0/include"
+					"tests/gtest-1.7.0/include",
+                    "/usr/local/Cellar/eigen/3.2.3/include/eigen3",
 				]
 			}
 		}

@@ -2,10 +2,10 @@
 * @Author: BlahGeek
 * @Date:   2015-01-05
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-05
+* @Last Modified time: 2015-01-06
 */
 
-#include "common.h"
+#include "./common.h"
 
 #include <cstdio>
 #include <cstring>
@@ -13,13 +13,18 @@
 #include <mutex>
 
 #include <unistd.h>
+#ifndef _GNU_SOURCE
+#include <libgen.h>
+#endif
 
-bool g_hp_log_enable = true;
+using namespace hp;
 
-void __hp_log__(const char *file, const char *func, int line,
+bool hp::g_log_enable = true;
+
+void hp::__hp_log__(const char *file, const char *func, int line,
 		const char *fmt, ...) {
 
-    if(!g_hp_log_enable)
+    if(!g_log_enable)
         return;
 
 #define TIME_FMT	"[%s %s@%s:%d]"
@@ -44,7 +49,9 @@ void __hp_log__(const char *file, const char *func, int line,
 		fprintf(stderr, time_fmt, timestr, func, basename(strdupa(file)), line);
         #else
         // strdupa is only present on GNU GCC
-        fprintf(stderr, time_fmt, timestr, func, file, line);
+        char * file_dup = strdup(file);
+        fprintf(stderr, time_fmt, timestr, func, basename(file_dup), line);
+        free(file_dup);
         #endif
 
 		va_list ap;
@@ -56,7 +63,7 @@ void __hp_log__(const char *file, const char *func, int line,
 
 }
 
-void __hp_assert_fail__(
+void hp::__hp_assert_fail__(
         const char *file, int line, const char *func,
         const char *expr, const char *msg_fmt, ...) {
     std::string msg;
@@ -73,7 +80,7 @@ void __hp_assert_fail__(
     __builtin_trap();
 }
 
-std::string svsprintf(const char *fmt, va_list ap_orig) {
+std::string hp::svsprintf(const char *fmt, va_list ap_orig) {
 	int size = 100;     /* Guess we need no more than 100 bytes */
 	char *p;
 
@@ -110,7 +117,7 @@ err:
     __builtin_trap();
 }
 
-std::string ssprintf(const char *fmt, ...) {
+std::string hp::ssprintf(const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
 	auto rst = svsprintf(fmt, ap);

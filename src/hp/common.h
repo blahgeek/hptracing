@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-05
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-05
+* @Last Modified time: 2015-01-06
 */
 
 #ifndef __hp_common_h__
@@ -14,7 +14,15 @@
 #include <cstddef>
 #include <cstdarg>
 
-extern bool g_hp_log_enable;
+#include <Eigen/Dense>
+#include "../json/json.h"
+
+namespace hp {
+
+using Number = float;
+using Vec = Eigen::Matrix<Number, 3, 1>;
+
+extern bool g_log_enable;
 
 #define likely(v)   __builtin_expect(bool(v), 1)
 #define unlikely(v)   __builtin_expect(bool(v), 0)
@@ -49,5 +57,7 @@ void __hp_assert_fail__(
 void __hp_log__(const char *file, const char *func, int line,
 		const char *fmt, ...)
     __attribute__((format(printf, 4, 5)));
+    
+}
 
 #endif
