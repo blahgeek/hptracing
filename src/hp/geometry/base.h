@@ -20,9 +20,10 @@ public:
      * Compute intersect of a ray
      * @param  start_p Start point of ray (may inside/on this object)
      * @param  dir     Direction of ray, must be normalized
-     * @return         Intersect point
+     * @return         Distance from start point to intersection point
+     *                 < 0 if no intersection
      */
-    std::pair<bool, Vec> intersect(const Vec & start_p, const Vec & dir) const;
+    Number intersect(const Vec & start_p, const Vec & dir) const;
 
     /**
      * Compute normal vector at this point 
@@ -48,7 +49,7 @@ public:
     virtual ~Geometry() {}
 
 protected:
-    virtual std::pair<bool, Vec> do_intersect(const Vec & start_p, const Vec & dir) const = 0;
+    virtual Number do_intersect(const Vec & start_p, const Vec & dir) const = 0;
 
 };
 

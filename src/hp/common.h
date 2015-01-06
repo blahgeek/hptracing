@@ -21,6 +21,7 @@ namespace hp {
 
 using Number = float;
 using Vec = Eigen::Matrix<Number, 3, 1>;
+using Color = Eigen::Matrix<Number, 3, 1>;
 
 extern bool g_log_enable;
 

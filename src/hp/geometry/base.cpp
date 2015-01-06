@@ -35,7 +35,7 @@ Vec Geometry::getRefraction(const Vec & in_dir,
             sin_beta * q;
 }
 
-std::pair<bool, Vec> Geometry::intersect(const Vec & start_p, const Vec & dir) const {
-    Vec start = start_p + 1e-5 * dir; // epsilon
+Number Geometry::intersect(const Vec & start_p, const Vec & dir) const {
+    Vec start = start_p + 1e-3 * dir; // epsilon
     return this->do_intersect(start, dir);
 }

@@ -5,8 +5,8 @@
 * @Last Modified time: 2015-01-06
 */
 
-#ifndef __hp_geometry_sphere_h__
-#define __hp_geometry_sphere_h__ value
+#ifndef __hp_geometry_triangle_h__
+#define __hp_geometry_triangle_h__ value
 
 #include "./base.h"
 
@@ -15,15 +15,15 @@ using hp::Geometry;
 
 namespace hp {
 
-class Sphere : public Geometry {
+class Triangle: public Geometry {
 
 private:
-    Vec center;
-    Number radius;
+    Vec p0;
+    Vec dx, dy;
 
 public:
-    Sphere(Vec center, Number radius): center(center), radius(radius) {}
-
+    Triangle(const Vec & a, const Vec & b, const Vec & c):
+        p0(a), dx(b-a), dy(c-a) {}
     Vec getNormal(const Vec & point) const override;
 
 protected:
