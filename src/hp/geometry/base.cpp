@@ -36,6 +36,6 @@ Vec Geometry::getRefraction(const Vec & in_dir,
 }
 
 std::pair<bool, Vec> Geometry::intersect(const Vec & start_p, const Vec & dir) const {
-    Vec start = start_p + Vec::Constant(std::numeric_limits<Number>::epsilon());
+    Vec start = start_p + 1e-5 * dir; // epsilon
     return this->do_intersect(start, dir);
 }

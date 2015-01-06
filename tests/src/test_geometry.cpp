@@ -21,20 +21,26 @@ TEST(GeometryTest, sphere) {
     auto p = Vec(2, 3, 4); p.normalize();
     auto ret = sphere->intersect(Vec(0, 0, 0), p);
     EXPECT_EQ(ret.first, true);
-    EXPECT_TRUE(std::abs(ret.second.norm() - p.norm()) < 1e-5);
+    EXPECT_TRUE(std::abs(ret.second[0] - p[0]) < 1e-5);
 
     ret = sphere->intersect(p * 0.2, p);
     EXPECT_EQ(ret.first, true);
-    EXPECT_TRUE(std::abs(ret.second.norm() - p.norm()) < 1e-5);
+    EXPECT_TRUE(std::abs(ret.second[0] - p[0]) < 1e-5);
 
     ret = sphere->intersect(p * (-1.2), p);
     EXPECT_EQ(ret.first, true);
-    EXPECT_TRUE(std::abs(ret.second.norm() - p.norm()) < 1e-5);
-    EXPECT_TRUE(ret.second[0] < 0);
+    EXPECT_TRUE(std::abs(ret.second[0] + p[0]) < 1e-5);
 
     ret = sphere->intersect(p * 10, p);
     EXPECT_EQ(ret.first, false);
 
     ret = sphere->intersect(Vec(-100, 100, 100), p);
     EXPECT_EQ(ret.first, false);
+
+    ret = sphere->intersect(p, p);
+    EXPECT_EQ(ret.first, false);
+
+    ret = sphere->intersect(p, -p);
+    EXPECT_EQ(ret.first, true);
+    EXPECT_TRUE(std::abs(ret.second[0] + p[0]) < 1e-5);
 }
