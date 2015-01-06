@@ -14,7 +14,7 @@
 #include <cstddef>
 #include <cstdarg>
 
-#include <Eigen/Dense>
+#include <Eigen/Core>
 #include "../json/json.h"
 
 namespace hp {
