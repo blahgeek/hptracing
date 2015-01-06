@@ -27,11 +27,11 @@ Vec Geometry::getRefraction(const Vec & in_dir,
     Number alpha = std::acos(cos_alpha);
     Vec p = cos_alpha * normal_dir;
     Vec q = in_dir + p;
-    Number sin_beta = std::sin(alpha) * std::pow(k, -reverse);
+    Number sin_beta = std::sin(alpha) * std::pow(k, reverse);
     Number beta = std::asin(sin_beta);
 
-    q.normalize();
-    return -reverse * std::cos(beta) * in_dir +
+    if(q.norm() > 0) q.normalize();
+    return -reverse * std::cos(beta) * normal_dir +
             sin_beta * q;
 }
 
