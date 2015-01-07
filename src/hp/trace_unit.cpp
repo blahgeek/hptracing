@@ -11,7 +11,7 @@
 using namespace hp;
 
 #define MIN_STRENGTH 1e-3
-#define REFLECT_SAMPLE 64
+#define REFLECT_SAMPLE 800
 
 bool TraceUnit::findGeometry(Scene * scene) {
     auto result = scene->intersect(start_p, in_dir);
@@ -19,7 +19,9 @@ bool TraceUnit::findGeometry(Scene * scene) {
     if(this->geometry) { // split this to another kernel?
         this->material = std::get<2>(result);
         this->intersect_p = start_p + std::get<0>(result) * in_dir;
+        this->normal = geometry->getNormal(intersect_p);
         this->result = strength.cwiseProduct(material->ambient);
+        this->result *= std::abs(normal.dot(in_dir));
         return true;
     }
     return false;
@@ -27,7 +29,6 @@ bool TraceUnit::findGeometry(Scene * scene) {
 
 void TraceUnit::computeIntersection() {
     if(!geometry) return; // should be compacted when using OpenCL
-    this->normal = geometry->getNormal(intersect_p);
     this->reflection_dir = Geometry::getReflection(in_dir, normal);
     this->refraction_dir = Geometry::getRefraction(in_dir, normal, 
                                                    material->optical_density);
@@ -50,19 +51,22 @@ void TraceUnit::sampleSubTrace(Scene * scene, TraceUnit::unit_insert_f insert_f)
     }
     // reflect
     for(int i = 0 ; i < REFLECT_SAMPLE ; i += 1) {
-        Number rand_alpha = Number(rand()) / Number(RAND_MAX) * 2 * PI;
-        Number rand_beta = Number(rand()) / Number(RAND_MAX) * 2 * PI;
-        Vec p(std::cos(rand_alpha) * std::cos(rand_beta), 
-              std::sin(rand_alpha) * std::cos(rand_beta), 
-              std::sin(rand_beta));
+        // Number rand_alpha = Number(rand()) / Number(RAND_MAX) * 2 * PI;
+        // Number rand_beta = Number(rand()) / Number(RAND_MAX) * 2 * PI;
+        // Vec p(std::cos(rand_alpha) * std::cos(rand_beta), 
+        //       std::sin(rand_alpha) * std::cos(rand_beta), 
+        //       std::sin(rand_beta));
+        Vec p(rand(), rand(), rand()); p.normalize();
         Number dot_normal = p.dot(normal);
-        if(dot_normal < 0){
+        if(dot_normal < 0 && reflection_dir.dot(normal) > 0){
             dot_normal = -dot_normal;
             p = -p;
         }
 
-        Color specular_term = material->specular * 
-                std::pow(p.dot(reflection_dir), material->specular_exp);
+        Color specular_term(0, 0, 0);
+        Number specular_dot = p.dot(reflection_dir);
+        if(specular_dot > 0)
+            specular_term = material->specular * std::pow(specular_dot, material->specular_exp);
         Color diffuse_term = material->diffuse * dot_normal;
 
         new_strength = strength.cwiseProduct(specular_term + diffuse_term) / Number(REFLECT_SAMPLE);

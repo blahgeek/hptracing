@@ -6,6 +6,7 @@
 */
 
 #include <iostream>
+#include <fstream>
 #include <gtest/gtest.h>
 
 #include "hp/trace_runner.h"
@@ -25,13 +26,13 @@ TEST(Runner, run) {
     }
     {
         Material mat1;
-        mat1.ambient = {1, 1, 1};
+        mat1.ambient = {10, 10, 10};
         scene->setMaterial(1, mat1);
     }
-    scene->setGeometry(0, std::make_unique<Sphere>(Vec(200, 200, 200), 100), 0);
-    scene->setGeometry(1, std::make_unique<Sphere>(Vec(500, 200, 300), 100), 1);
+    scene->setGeometry(0, std::make_unique<Sphere>(Vec(200, 200, 300), 100), 0);
+    scene->setGeometry(1, std::make_unique<Sphere>(Vec(500, 200, 200), 100), 1);
 
-    Vec view_p(400, 200, -500);
+    Vec view_p(200, 200, -500);
     std::vector<Vec> view_dir;
     for(int i = 0 ; i < 512 ; i += 1) {
         for(int j = 0 ; j < 512 ; j += 1) {
@@ -44,4 +45,17 @@ TEST(Runner, run) {
                                                 std::move(view_dir),
                                                 view_p);
     runner->run();
+
+    std::ofstream fout("out.ppm");
+    fout << "P3\n";
+    fout << "512 512\n255\n";
+    for(int i = 0 ; i < 512 ; i += 1) {
+        for(int j = 0 ; j < 512 ; j += 1) {
+            auto vec = runner->result[i + j * 512];
+            for(int k = 0 ; k < 3 ; k += 1)
+                fout << int(255 * (1.0 - std::exp(-vec[k]))) << " ";
+        }
+        fout << "\n";
+    }
+    fout.close();
 }

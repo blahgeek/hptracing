@@ -38,12 +38,21 @@ void TraceRunner::run() {
         }
         state0.clear();
 
+        std::cerr << "Loop1: state0 " << state0.size() 
+            << ", state1 " << state1.size() 
+            << ", state2 " << state2.size() << std::endl;
+ 
         for(auto index: state1) {
             TraceUnit & unit = units[index];
             unit.computeIntersection();
             state2.insert(index);
         }
         state1.clear();
+
+        std::cerr << "Loop2: state0 " << state0.size() 
+            << ", state1 " << state1.size() 
+            << ", state2 " << state2.size() << std::endl;
+ 
 
         for(auto index: state2) {
             TraceUnit & unit = units[index];
