@@ -30,6 +30,7 @@ private:
     std::vector<Material> materials;
 
 protected:
+public:
     std::vector<std::pair<std::unique_ptr<Geometry>, int>> geometries;
 
 public:

@@ -8,10 +8,14 @@
 #include "./trace_runner.h"
 #include "./scene/base.h"
 #include <iostream>
+#include <cstdlib>
+#include <ctime>
 
 using namespace hp;
 
 void TraceRunner::run() {
+    std::srand(std::time(0));
+    
     units.clear();
     state0.clear(); state1.clear(); state2.clear();
     // put every view_dir into units0
@@ -26,7 +30,10 @@ void TraceRunner::run() {
         state0.insert(unit.orig_id);
     }
 
-    while(!(state0.empty() && state1.empty() && state2.empty())) {
+    for(int i = 0 ; i < 5 ; i += 1) {
+        if(state0.empty() && state1.empty() && state2.empty())
+            break;
+
         std::cerr << "Loop: state0 " << state0.size() 
             << ", state1 " << state1.size() 
             << ", state2 " << state2.size() << std::endl;

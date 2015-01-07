@@ -17,22 +17,33 @@
 using namespace hp;
 
 TEST(Runner, run) {
-    auto scene = std::make_unique<Scene>(2, 2);
+    auto scene = std::make_unique<Scene>(4, 3);
     {
         Material mat0;
         mat0.diffuse = {1, 0, 0};
-        mat0.specular = {1, 1, 1};
+        mat0.specular = {0.1, 0.1, 0.1};
+        mat0.specular_exp = 2;
         scene->setMaterial(0, mat0);
     }
     {
+        Material mat0;
+        mat0.diffuse = {0.2, 0.2, 0.2};
+        mat0.specular = {0.5, 0.5, 0.5};
+        mat0.specular_exp = 10;
+        mat0.dissolve = 0;
+        scene->setMaterial(2, mat0);
+    }
+    {
         Material mat1;
-        mat1.ambient = {10, 10, 10};
+        mat1.ambient = {40, 40, 40};
         scene->setMaterial(1, mat1);
     }
-    scene->setGeometry(0, std::make_unique<Sphere>(Vec(200, 200, 300), 100), 0);
-    scene->setGeometry(1, std::make_unique<Sphere>(Vec(500, 200, 200), 100), 1);
+    scene->setGeometry(0, std::make_unique<Sphere>(Vec(200, 200, 400), 100), 0);
+    scene->setGeometry(2, std::make_unique<Sphere>(Vec(500, 200, 400), 100), 0);
+    scene->setGeometry(3, std::make_unique<Sphere>(Vec(200, 200, 100), 100), 2);
+    scene->setGeometry(1, std::make_unique<Sphere>(Vec(1000, 100, -1000), 400), 1);
 
-    Vec view_p(200, 200, -500);
+    Vec view_p(256, 256, -500);
     std::vector<Vec> view_dir;
     for(int i = 0 ; i < 512 ; i += 1) {
         for(int j = 0 ; j < 512 ; j += 1) {

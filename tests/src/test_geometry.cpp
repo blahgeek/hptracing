@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-06
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-06
+* @Last Modified time: 2015-01-07
 */
 
 #include <gtest/gtest.h>
@@ -29,8 +29,8 @@ TEST(GeometryTest, sphere) {
     ret = sphere->intersect(p * 0.2, p);
     EXPECT_TRUE(std::abs(ret - 0.8) < 1e-3);
 
-    ret = sphere->intersect(p * (-1.2), p);
-    EXPECT_TRUE(std::abs(ret - 0.2) < 1e-3);
+    ret = sphere->intersect(p * (-1.7), p);
+    EXPECT_TRUE(std::abs(ret - 0.7) < 1e-3);
 
     ret = sphere->intersect(p * 10, p);
     EXPECT_TRUE(ret < 0);
@@ -43,6 +43,13 @@ TEST(GeometryTest, sphere) {
 
     ret = sphere->intersect(p, -p);
     EXPECT_TRUE(std::abs(ret - 2) < 1e-3);
+
+    sphere = std::make_unique<Sphere>(Vec(200, 200, 200), 100);
+    p = Vec(-0.123051, -0.00992351, 0.992351); p.normalize();
+    ret = sphere->intersect(Vec(200, 200, -500), p);
+    EXPECT_TRUE(ret > 0);
+    auto intersect_p = Vec(200, 200, -500) + ret * p;
+    EXPECT_TRUE(intersect_p[2] < 200);
 }
 
 TEST(GeometryTest, triangle) {

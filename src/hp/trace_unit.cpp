@@ -7,13 +7,18 @@
 
 #include "./trace_unit.h"
 #include "./scene/base.h"
+#include <iostream>
 
 using namespace hp;
 
-#define MIN_STRENGTH 1e-3
-#define REFLECT_SAMPLE 800
+#define MIN_STRENGTH 1e-4
+#define SPECULAR_SAMPLE 6
+#define DIFFUSE_SAMPLE 200
+
+#define RAND_F() (Number(std::rand()) / Number(RAND_MAX) - 0.5)
 
 bool TraceUnit::findGeometry(Scene * scene) {
+
     auto result = scene->intersect(start_p, in_dir);
     this->geometry = std::get<1>(result);
     if(this->geometry) { // split this to another kernel?
@@ -28,14 +33,12 @@ bool TraceUnit::findGeometry(Scene * scene) {
 }
 
 void TraceUnit::computeIntersection() {
-    if(!geometry) return; // should be compacted when using OpenCL
     this->reflection_dir = Geometry::getReflection(in_dir, normal);
     this->refraction_dir = Geometry::getRefraction(in_dir, normal, 
                                                    material->optical_density);
 }
 
 void TraceUnit::sampleSubTrace(Scene * scene, TraceUnit::unit_insert_f insert_f) {
-    if(!geometry) return;
 
     std::vector<TraceUnit> tmp_unit;
     // refract
@@ -49,27 +52,44 @@ void TraceUnit::sampleSubTrace(Scene * scene, TraceUnit::unit_insert_f insert_f)
         unit.in_dir = this->refraction_dir;
         tmp_unit.push_back(unit);
     }
-    // reflect
-    for(int i = 0 ; i < REFLECT_SAMPLE ; i += 1) {
-        // Number rand_alpha = Number(rand()) / Number(RAND_MAX) * 2 * PI;
-        // Number rand_beta = Number(rand()) / Number(RAND_MAX) * 2 * PI;
-        // Vec p(std::cos(rand_alpha) * std::cos(rand_beta), 
-        //       std::sin(rand_alpha) * std::cos(rand_beta), 
-        //       std::sin(rand_beta));
-        Vec p(rand(), rand(), rand()); p.normalize();
+    // specular reflect
+    new_strength = strength.cwiseProduct(material->specular);
+    if(new_strength.norm() > MIN_STRENGTH) {
+        int samples = int(std::sqrt(std::max(1, 100 - material->specular_exp)));
+        TraceUnit unit;
+        unit.orig_id = this->orig_id;
+        unit.depth = this->depth + 1;
+        unit.strength = new_strength / samples;
+        unit.start_p = this->intersect_p;
+        for(int i = 0 ; i < samples ; i += 1) {
+            Vec new_dir = this->reflection_dir;
+            new_dir[0] += std::pow(RAND_F(), material->specular_exp);
+            new_dir[1] += std::pow(RAND_F(), material->specular_exp);
+            new_dir[2] += std::pow(RAND_F(), material->specular_exp);
+            new_dir.normalize();
+            unit.in_dir = new_dir;
+            tmp_unit.push_back(unit);
+        }
+    }
+    // diffuse
+    for(int i = 0 ; i < DIFFUSE_SAMPLE ; i += 1) {
+        Vec p(RAND_F(), RAND_F(), RAND_F()); p.normalize();
         Number dot_normal = p.dot(normal);
+
         if(dot_normal < 0 && reflection_dir.dot(normal) > 0){
             dot_normal = -dot_normal;
             p = -p;
         }
 
-        Color specular_term(0, 0, 0);
-        Number specular_dot = p.dot(reflection_dir);
-        if(specular_dot > 0)
-            specular_term = material->specular * std::pow(specular_dot, material->specular_exp);
-        Color diffuse_term = material->diffuse * dot_normal;
+        // Color specular_term(0, 0, 0);
+        // Number specular_dot = p.dot(reflection_dir);
+        // if(specular_dot > 0)
+        //     specular_term = material->specular * std::pow(specular_dot, material->specular_exp);
+        // Color diffuse_term = material->diffuse * dot_normal;
 
-        new_strength = strength.cwiseProduct(specular_term + diffuse_term) / Number(REFLECT_SAMPLE);
+        // // hp_assert(p.dot(normal) > 0);
+
+        new_strength = strength.cwiseProduct(material->diffuse * dot_normal) / DIFFUSE_SAMPLE;
         if(new_strength.norm() > MIN_STRENGTH) {
             TraceUnit unit;
             unit.orig_id = this->orig_id;
@@ -80,6 +100,7 @@ void TraceUnit::sampleSubTrace(Scene * scene, TraceUnit::unit_insert_f insert_f)
             tmp_unit.push_back(unit);
         }
     }
+
 
     for(auto & unit: tmp_unit)
         insert_f(unit);

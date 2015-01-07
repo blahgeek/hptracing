@@ -36,8 +36,8 @@ Vec Geometry::getRefraction(const Vec & in_dir,
 }
 
 Number Geometry::intersect(const Vec & start_p, const Vec & dir) const {
-    Vec start = start_p + 1e-2 * dir; // epsilon
+    Vec start = start_p + 0.5 * dir; // epsilon
     auto ret = this->do_intersect(start, dir);
     if(ret < 0) return ret;
-    return ret + 1e-2;
+    return ret + 0.5;
 }
