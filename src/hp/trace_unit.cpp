@@ -35,6 +35,8 @@ void TraceUnit::computeIntersection() {
 
 void TraceUnit::sampleSubTrace(Scene * scene, TraceUnit::unit_insert_f insert_f) {
     if(!geometry) return;
+
+    std::vector<TraceUnit> tmp_unit;
     // refract
     Color new_strength = strength * (1 - material->dissolve);
     if(new_strength.norm() > MIN_STRENGTH) { // compact?
@@ -44,7 +46,7 @@ void TraceUnit::sampleSubTrace(Scene * scene, TraceUnit::unit_insert_f insert_f)
         unit.strength = new_strength;
         unit.start_p = this->intersect_p;
         unit.in_dir = this->refraction_dir;
-        insert_f(unit);
+        tmp_unit.push_back(unit);
     }
     // reflect
     for(int i = 0 ; i < REFLECT_SAMPLE ; i += 1) {
@@ -71,7 +73,10 @@ void TraceUnit::sampleSubTrace(Scene * scene, TraceUnit::unit_insert_f insert_f)
             unit.strength = new_strength;
             unit.start_p = this->intersect_p;
             unit.in_dir = p;
-            insert_f(unit);
+            tmp_unit.push_back(unit);
         }
     }
+
+    for(auto & unit: tmp_unit)
+        insert_f(unit);
 }

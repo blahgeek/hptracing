@@ -17,22 +17,22 @@ namespace hp {
 
 class Material {
 public:
-    Color ambient; // Ka, light
-    Color diffuse; // Kd
-    Color specular; // Ks
+    Color ambient = {0, 0, 0}; // Ka, light
+    Color diffuse = {0, 0, 0}; // Kd
+    Color specular = {0, 0, 0}; // Ks
     // Tf(transmission filter) is ignored
     // Ke(emission) is ignored
     // Ns(specular exp) is ignored
-    int specular_exp; // Ns
+    int specular_exp = 1; // Ns
     /**
      * Ni (optical density) (index of refraction)
      */
-    Number optical_density;
+    Number optical_density = 1.5;
     /**
      * A factor of 1.0 is fully opaque.
      * A factor of 0.0 is fully dissolved (completely transparent)
      */
-    Number dissolve;
+    Number dissolve = 1.0;
 
     // illum is ignored
 

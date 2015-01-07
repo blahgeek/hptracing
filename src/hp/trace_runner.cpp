@@ -47,9 +47,9 @@ void TraceRunner::run() {
 
         for(auto index: state2) {
             TraceUnit & unit = units[index];
-            unit.sampleSubTrace(scene.get(), [this](TraceUnit unit) {
+            unit.sampleSubTrace(scene.get(), [this](TraceUnit x) {
                 state0.insert(units.size());
-                units.push_back(unit);
+                units.push_back(x);
             });
         }
         state2.clear();
