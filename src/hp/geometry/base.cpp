@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-06
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-06
+* @Last Modified time: 2015-01-07
 */
 
 #include <iostream>
@@ -37,5 +37,5 @@ Vec Geometry::getRefraction(const Vec & in_dir,
 
 Number Geometry::intersect(const Vec & start_p, const Vec & dir) const {
     Vec start = start_p + 1e-5 * dir; // epsilon
-    return this->do_intersect(start, dir);
+    return this->do_intersect(start, dir) + 1e-5;
 }

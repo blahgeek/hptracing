@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-05
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-06
+* @Last Modified time: 2015-01-07
 */
 
 #ifndef __hp_common_h__
@@ -16,6 +16,8 @@
 
 #include <Eigen/Core>
 #include "../json/json.h"
+
+#define PI 3.141592653589
 
 namespace hp {
 
@@ -46,7 +48,7 @@ std::string ssprintf(const char *fmt, ...)
 #define hp_assert(expr, msg...) \
     do { \
         if (unlikely(!(expr))) \
-            __usql_assert_fail__(__FILE__, __LINE__, \
+            __hp_assert_fail__(__FILE__, __LINE__, \
                     __PRETTY_FUNCTION__, # expr, ##msg); \
     } while(0)
 
