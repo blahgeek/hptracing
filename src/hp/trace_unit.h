@@ -9,6 +9,7 @@
 #define __hp_trace_unit_h__ value
 
 #include <vector>
+#include <functional>
 #include "./common.h"
 #include "./material.h"
 #include "./geometry/base.h"
@@ -54,17 +55,20 @@ public:
      * Given a scene, find THE geometry which intersect with (start_p->in_dir)
      * geometry, material, intersect_p and result will be computed 
      * (geometry may remains nullptr)
+     * @return True if found
      */
-    void findGeometry(Scene * scene);
+    bool findGeometry(Scene * scene);
     /**
      * Compute intersection information base on geometry previously found
      * normal, intersect_p, reflection_dir, refeaction_dir will be computed
      */
     void computeIntersection();
+
+    using unit_insert_f = std::function<void(TraceUnit)>;
     /**
      * Sample all sub-trace, put it into target
      */
-    void sampleSubTrace(Scene * scene, std::vector<TraceUnit> & target);
+    void sampleSubTrace(Scene * scene, unit_insert_f insert_f);
 
 };
 

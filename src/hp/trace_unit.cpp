@@ -13,14 +13,16 @@ using namespace hp;
 #define MIN_STRENGTH 1e-3
 #define REFLECT_SAMPLE 64
 
-void TraceUnit::findGeometry(Scene * scene) {
+bool TraceUnit::findGeometry(Scene * scene) {
     auto result = scene->intersect(start_p, in_dir);
     this->geometry = std::get<1>(result);
     if(this->geometry) { // split this to another kernel?
         this->material = std::get<2>(result);
         this->intersect_p = start_p + std::get<0>(result) * in_dir;
         this->result = strength.cwiseProduct(material->ambient);
+        return true;
     }
+    return false;
 }
 
 void TraceUnit::computeIntersection() {
@@ -31,7 +33,7 @@ void TraceUnit::computeIntersection() {
                                                    material->optical_density);
 }
 
-void TraceUnit::sampleSubTrace(Scene * scene, std::vector<TraceUnit> & target) {
+void TraceUnit::sampleSubTrace(Scene * scene, TraceUnit::unit_insert_f insert_f) {
     if(!geometry) return;
     // refract
     Color new_strength = strength * (1 - material->dissolve);
@@ -42,7 +44,7 @@ void TraceUnit::sampleSubTrace(Scene * scene, std::vector<TraceUnit> & target) {
         unit.strength = new_strength;
         unit.start_p = this->intersect_p;
         unit.in_dir = this->refraction_dir;
-        target.push_back(unit);
+        insert_f(unit);
     }
     // reflect
     for(int i = 0 ; i < REFLECT_SAMPLE ; i += 1) {
@@ -69,7 +71,7 @@ void TraceUnit::sampleSubTrace(Scene * scene, std::vector<TraceUnit> & target) {
             unit.strength = new_strength;
             unit.start_p = this->intersect_p;
             unit.in_dir = p;
-            target.push_back(unit);
+            insert_f(unit);
         }
     }
 }

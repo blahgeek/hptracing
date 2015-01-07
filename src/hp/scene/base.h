@@ -12,6 +12,8 @@
 #include "../geometry/base.h"
 #include "../material.h"
 
+#include "../../objloader/tiny_obj_loader.h"
+
 #include <vector>
 #include <map>
 #include <memory>
@@ -32,6 +34,8 @@ protected:
 
 public:
     Scene(int num_geo, int num_mat);
+    virtual ~Scene(){}
+    
     void setMaterial(int n, Material mat);
     virtual void setGeometry(int n, std::unique_ptr<Geometry> && geo, int mat_id);
 

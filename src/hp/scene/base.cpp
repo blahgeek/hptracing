@@ -17,7 +17,7 @@ Scene::Scene(int num_geo, int num_mat) {
 }
 
 void Scene::setMaterial(int n, Material mat) {
-    hp_assert(n < materials.size());
+    hp_assert(static_cast<size_t>(n) < materials.size());
     materials[n] = mat;
 }
 
