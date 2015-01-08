@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-06
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-06
+* @Last Modified time: 2015-01-08
 */
 
 #ifndef __hp_geometry_base_h__
@@ -31,6 +31,10 @@ public:
      * @return       vector
      */
     virtual Vec getNormal(const Vec & point) const = 0;
+
+    virtual Number getSurfaceArea() const = 0;
+
+    virtual Vec randomSurfacePoint() const = 0;
 
     /**
      * get reflection

@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-06
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-06
+* @Last Modified time: 2015-01-08
 */
 
 #include "./sphere.h"
@@ -29,4 +29,13 @@ Number Sphere::do_intersect(const Vec & start_p, const Vec & dir) const {
     if(t_norm < 0)
         t_norm += 2 * s;
     return t_norm; // may < 0, which means no intersection
+}
+
+Number Sphere::getSurfaceArea() const {
+    return 4 * PI * radius * radius;
+}
+
+Vec Sphere::randomSurfacePoint() const {
+    Vec p(RAND_F(), RAND_F(), RAND_F()); p.normalize();
+    return center + radius * p;
 }

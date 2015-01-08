@@ -25,7 +25,7 @@ namespace hp {
 namespace Unit {
 
     class S0; class S1; 
-    class S2_refract; class S2_specular; class S2_diffuse;
+    class S2_refract; class S2_specular; class S2_diffuse; class S2_light;
 
     class S0 {
     public:
@@ -50,7 +50,8 @@ namespace Unit {
         void run(std::vector<Color> & results,
                  std::vector<S2_refract> & s2_refract,
                  std::vector<S2_specular> & s2_specular,
-                 std::vector<S2_diffuse> & s2_diffuse);
+                 std::vector<S2_diffuse> & s2_diffuse,
+                 std::vector<S2_light> & s2_light);
     };
 
     class S2_refract {
@@ -87,6 +88,16 @@ namespace Unit {
         // int samples = 1;
 
         void run(std::vector<S0> & s0);
+    };
+
+    class S2_light {
+    public:
+        int orig_id = -1;
+        int depth = 0;
+        Color new_strength;
+        Vec in_dir, normal, intersect_p;
+
+        void run(Scene * scene, std::vector<S0> & s0);
     };
 
 }

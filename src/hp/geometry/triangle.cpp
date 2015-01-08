@@ -34,3 +34,15 @@ Number Triangle::do_intersect(const Vec & start_p, const Vec & dir) const {
         return -result[2];
     return -1;
 }
+
+Number Triangle::getSurfaceArea() const {
+    Number dot = dx.dot(dy);
+    Number cosine = dx.normalized().dot(dy.normalized());
+    return dot / cosine * std::sqrt(1 - cosine * cosine);
+}
+
+Vec Triangle::randomSurfacePoint() const {
+    Number rand = RAND_F() + 0.5;
+    Vec ret = p0 + dx * rand + dy * (1.0 - rand);
+    return ret;
+}

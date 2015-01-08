@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-05
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-07
+* @Last Modified time: 2015-01-08
 */
 
 #ifndef __hp_common_h__
@@ -18,6 +18,8 @@
 #include "../json/json.h"
 
 #define PI 3.141592653589
+
+#define RAND_F() (Number(std::rand()) / Number(RAND_MAX) - 0.5)
 
 namespace hp {
 

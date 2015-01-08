@@ -17,13 +17,29 @@ Scene::Scene(int num_geo, int num_mat) {
     materials.resize(num_mat);
 }
 
-void Scene::setMaterial(int n, Material mat) {
-    hp_assert(static_cast<size_t>(n) < materials.size());
-    materials[n] = mat;
+void Scene::addGeometry(std::unique_ptr<Geometry> && geo, int mat) {
+    geometries.emplace_back(std::move(geo), mat);
+    auto & material = materials[mat];
+    auto & geometry = geometries.back().first;
+    Number ambient_norm = material.ambient.norm();
+    if(ambient_norm > 0) {
+        auto val = geometry->getSurfaceArea();
+        val *= ambient_norm;
+        total_light_val += val;
+        lights[total_light_val] = geometries.size() - 1;
+    }
 }
 
-void Scene::setGeometry(int n, std::unique_ptr<Geometry> && geo, int mat_id) {
-    geometries[n] = std::make_pair(std::move(geo), mat_id);
+Vec Scene::randomRayToLight(const Vec & start_p) {
+    Number val = total_light_val * (RAND_F() + 0.5);
+    auto target = lights.upper_bound(val);
+    if(target == lights.end()) target = lights.begin();
+
+    hp_assert(materials[geometries[target->second].second].ambient.norm() > 0);
+    Vec p = geometries[target->second].first->randomSurfacePoint();
+    Vec ret = p - start_p;
+    ret.normalize();
+    return ret;
 }
 
 std::tuple<Number, Geometry *, Material *> Scene::intersect(const Vec & start_p, const Vec & dir) {
@@ -52,7 +68,7 @@ Scene::Scene(std::string filename) {
            shapes.size(), mats.size());
 
     for(auto & mat: mats) {
-        this->materials.push_back({
+        this->addMaterial({
             .ambient = Color(mat.ambient[0], mat.ambient[1], mat.ambient[2]),
             .diffuse = Color(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]),
             .specular = Color(mat.specular[0], mat.specular[1], mat.specular[2]),
@@ -72,9 +88,9 @@ Scene::Scene(std::string filename) {
                                   shape.mesh.positions[i+1],
                                   shape.mesh.positions[i+2]);
         for(size_t i = 0 ; i < shape.mesh.indices.size() ; i += 3)
-            this->geometries.emplace_back(std::make_unique<Triangle>(vertices[shape.mesh.indices[i]],
-                                                                     vertices[shape.mesh.indices[i+1]],
-                                                                     vertices[shape.mesh.indices[i+2]]),
-                                          shape.mesh.material_ids[i / 3]);
+            this->addGeometry(std::make_unique<Triangle>(vertices[shape.mesh.indices[i]],
+                                                         vertices[shape.mesh.indices[i+1]],
+                                                         vertices[shape.mesh.indices[i+2]]),
+                              shape.mesh.material_ids[i / 3]);
     }
 }

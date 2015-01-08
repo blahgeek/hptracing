@@ -19,6 +19,7 @@ void TraceRunner::log(int i) {
         << ", s1 " << s1.size() 
         << ", s2_refract " << s2_refract.size() 
         << ", s2_specular " << s2_specular.size() 
+        << ", s2_light " << s2_light.size()
         << ", s2_diffuse " << s2_diffuse.size() << std::endl;
 }
 
@@ -26,7 +27,7 @@ void TraceRunner::run() {
     std::srand(std::time(0));
 
     s0.clear(); s1.clear(); 
-    s2_specular.clear(); s2_refract.clear(); s2_diffuse.clear();
+    s2_specular.clear(); s2_refract.clear(); s2_diffuse.clear(); s2_light.clear();
 
     result.resize(view_dir.size(), Color(0, 0, 0));
     int orig_id = 0;
@@ -51,7 +52,7 @@ void TraceRunner::run() {
         log(i);
 
         for(auto & x: s1)
-            x.run(result, s2_refract, s2_specular, s2_diffuse);
+            x.run(result, s2_refract, s2_specular, s2_diffuse, s2_light);
         s1.clear();
         
         log(i);
@@ -66,6 +67,12 @@ void TraceRunner::run() {
             x.run(s0);
         s2_diffuse.clear();
         
+        log(i);
+
+        for(auto & x: s2_light)
+            x.run(scene.get(), s0);
+        s2_light.clear();
+
         log(i);
 
         for(auto & x: s2_specular)

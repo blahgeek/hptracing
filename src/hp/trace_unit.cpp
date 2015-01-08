@@ -15,10 +15,9 @@ using namespace hp;
 
 #define SPECULAR_SAMPLE 10
 #define DIFFUSE_SAMPLE 16
+#define LIGHT_SAMPLE 6
 
 #define SAMPLE_THRESHOLD 0.5f
-
-#define RAND_F() (Number(std::rand()) / Number(RAND_MAX) - 0.5)
 
 void Unit::S0::run(Scene * scene, std::vector<Unit::S1> & s1) {
     auto result = scene->intersect(start_p, in_dir);
@@ -41,7 +40,8 @@ void Unit::S0::run(Scene * scene, std::vector<Unit::S1> & s1) {
 void Unit::S1::run(std::vector<Color> & results,
                    std::vector<Unit::S2_refract> & s2_refract,
                    std::vector<Unit::S2_specular> & s2_specular,
-                   std::vector<Unit::S2_diffuse> & s2_diffuse) {
+                   std::vector<Unit::S2_diffuse> & s2_diffuse,
+                   std::vector<Unit::S2_light> & s2_light) {
     Vec intersect_p = start_p + intersect_number * in_dir;
     Vec normal = geometry->getNormal(intersect_p);
 
@@ -77,17 +77,46 @@ void Unit::S1::run(std::vector<Color> & results,
 
     new_strength = strength.cwiseProduct(material->diffuse);
     new_strength_norm = new_strength.norm();
+    // if(new_strength_norm > SAMPLE_THRESHOLD)
+    //     s2_diffuse.push_back({
+    //         .orig_id = orig_id,
+    //         .depth = depth,
+    //         .new_strength = new_strength,
+    //         .in_dir = in_dir,
+    //         .normal = normal,
+    //         .intersect_p = intersect_p,
+    //         // .samples = (new_strength_norm > SAMPLE_THRESHOLD) ? DIFFUSE_SAMPLE : 1
+    //     });
+
+    // reuse diffuse strength
+    new_strength /= LIGHT_SAMPLE;
     if(new_strength_norm > SAMPLE_THRESHOLD)
-        s2_diffuse.push_back({
+        s2_light.push_back({
             .orig_id = orig_id,
             .depth = depth,
             .new_strength = new_strength,
             .in_dir = in_dir,
             .normal = normal,
-            .intersect_p = intersect_p,
-            // .samples = (new_strength_norm > SAMPLE_THRESHOLD) ? DIFFUSE_SAMPLE : 1
+            .intersect_p = intersect_p
         });
 
+}
+
+void Unit::S2_light::run(Scene * scene, std::vector<S0> & s0) {
+    bool dir = in_dir.dot(normal) < 0;
+    for(int i = 0 ; i < LIGHT_SAMPLE ; i += 1) {
+        Vec new_dir = scene->randomRayToLight(intersect_p);
+        Number dot = new_dir.dot(normal);
+        if((dot > 0) == dir) {
+            s0.push_back({
+                .orig_id = orig_id,
+                .depth = depth + 1,
+                .strength = new_strength * dot,
+                .start_p = intersect_p,
+                .in_dir = new_dir
+            });
+        }
+    }
 }
 
 void Unit::S2_refract::run(std::vector<Unit::S0> & s0) {

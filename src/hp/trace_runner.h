@@ -23,6 +23,7 @@ protected:
     std::vector<Unit::S2_specular> s2_specular;
     std::vector<Unit::S2_diffuse> s2_diffuse;
     std::vector<Unit::S2_refract> s2_refract;
+    std::vector<Unit::S2_light> s2_light;
     // std::vector<TraceUnit> units;
     // std::set<int> state0, state1, state2;
 
