@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-07
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-07
+* @Last Modified time: 2015-01-08
 */
 
 #include "./trace_runner.h"
@@ -13,68 +13,66 @@
 
 using namespace hp;
 
+void TraceRunner::log() {
+    std::cerr << "Loop "
+        << ": s0 " << s0.size() 
+        << ", s1 " << s1.size() 
+        << ", s2_refract " << s2_refract.size() 
+        << ", s2_specular " << s2_specular.size() 
+        << ", s2_diffuse " << s2_diffuse.size() << std::endl;
+}
+
 void TraceRunner::run() {
     std::srand(std::time(0));
-    
-    units.clear();
-    state0.clear(); state1.clear(); state2.clear();
-    // put every view_dir into units0
-    TraceUnit unit;
-    unit.orig_id = -1;
-    unit.strength = {1, 1, 1};
-    unit.start_p = view_p;
-    for(auto & dir: view_dir) {
-        unit.orig_id += 1;
-        unit.in_dir = dir;
-        units.push_back(unit);
-        state0.insert(unit.orig_id);
-    }
 
-    for(int i = 0 ; i < 5 ; i += 1) {
-        if(state0.empty() && state1.empty() && state2.empty())
-            break;
-
-        std::cerr << "Loop: state0 " << state0.size() 
-            << ", state1 " << state1.size() 
-            << ", state2 " << state2.size() << std::endl;
-            
-        for(auto index: state0) {
-            TraceUnit & unit = units[index];
-            if(unit.findGeometry(scene.get()))
-                state1.insert(index);
-        }
-        state0.clear();
-
-        std::cerr << "Loop1: state0 " << state0.size() 
-            << ", state1 " << state1.size() 
-            << ", state2 " << state2.size() << std::endl;
- 
-        for(auto index: state1) {
-            TraceUnit & unit = units[index];
-            unit.computeIntersection();
-            state2.insert(index);
-        }
-        state1.clear();
-
-        std::cerr << "Loop2: state0 " << state0.size() 
-            << ", state1 " << state1.size() 
-            << ", state2 " << state2.size() << std::endl;
- 
-
-        for(auto index: state2) {
-            TraceUnit & unit = units[index];
-            unit.sampleSubTrace(scene.get(), [this](TraceUnit x) {
-                state0.insert(units.size());
-                units.push_back(x);
-            });
-        }
-        state2.clear();
-    }
+    s0.clear(); s1.clear(); 
+    s2_specular.clear(); s2_refract.clear(); s2_diffuse.clear();
 
     result.resize(view_dir.size(), Color(0, 0, 0));
+    int orig_id = 0;
 
-    for(auto & unit: units)
-        result[unit.orig_id] += unit.result;
+    for(auto & dir: view_dir)
+        s0.push_back({
+            .orig_id = orig_id++,
+            .depth = 0,
+            .strength = Color(1, 1, 1),
+            .start_p = view_p,
+            .in_dir = dir
+        });
 
-    units.clear();
+    for(int i = 0 ; i < 5 ; i += 1) {
+
+        log();
+
+        for(auto & x: s0)
+            x.run(scene.get(), s1);
+        s0.clear();
+
+        log();
+
+        for(auto & x: s1)
+            x.run(result, s2_refract, s2_specular, s2_diffuse);
+        s1.clear();
+        
+        log();
+
+        for(auto & x: s2_refract)
+            x.run(s0);
+        s2_refract.clear();
+        
+        log();
+
+        for(auto & x: s2_diffuse)
+            x.run(s0);
+        s2_diffuse.clear();
+        
+        log();
+
+        for(auto & x: s2_specular)
+            x.run(s0);
+        s2_specular.clear();
+        
+        log();
+    }
+    
 }
