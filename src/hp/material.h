@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-06
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-07
+* @Last Modified time: 2015-01-08
 */
 
 #ifndef __hp_material_h__
@@ -23,7 +23,7 @@ public:
     // Tf(transmission filter) is ignored
     // Ke(emission) is ignored
     // Ns(specular exp) is ignored
-    int specular_exp = 1; // Ns
+    // int specular_exp = 1; // Ns
     /**
      * Ni (optical density) (index of refraction)
      */
