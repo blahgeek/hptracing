@@ -71,9 +71,9 @@ namespace Unit {
         int depth = 0;
         Color new_strength;
         Vec in_dir, normal, intersect_p;
-        int specular_exp = 1;
+        // int specular_exp = 1;
 
-        int samples = 1;
+        // int samples = 1;
 
         void run(std::vector<S0> & s0);
     };

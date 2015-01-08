@@ -65,13 +65,12 @@ TEST(Runner, run) {
     std::ofstream fout("out.ppm");
     fout << "P3\n";
     fout << "500 500\n255\n";
-    for(int i = 0 ; i < 500 ; i += 1) {
-        for(int j = 0 ; j < 500 ; j += 1) {
-            auto vec = runner->result[i + j * 500];
+    for(int y = 500 - 1 ; y >= 0 ; y --) {
+        for(int x = 0 ; x < 500 ; x ++) {
+            auto vec = runner->result[x * 500 + y];
             for(int k = 0 ; k < 3 ; k += 1)
                 fout << int(255 * (1.0 - std::exp(-vec[k]))) << " ";
         }
-        fout << "\n";
     }
     fout.close();
 }

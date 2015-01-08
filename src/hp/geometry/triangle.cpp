@@ -42,7 +42,12 @@ Number Triangle::getSurfaceArea() const {
 }
 
 Vec Triangle::randomSurfacePoint() const {
-    Number rand = RAND_F() + 0.5;
-    Vec ret = p0 + dx * rand + dy * (1.0 - rand);
+    Number randx = RAND_F() + 0.5;
+    Number randy = RAND_F() + 0.5;
+    if(randx + randy > 1) {
+        randx = 1 - randx;
+        randy = 1- randy;
+    }
+    Vec ret = p0 + dx * randx + dy * randy;
     return ret;
 }
