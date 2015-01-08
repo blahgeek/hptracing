@@ -13,8 +13,8 @@
 
 using namespace hp;
 
-void TraceRunner::log() {
-    std::cerr << "Loop "
+void TraceRunner::log(int i) {
+    std::cerr << "Loop " << i
         << ": s0 " << s0.size() 
         << ", s1 " << s1.size() 
         << ", s2_refract " << s2_refract.size() 
@@ -42,37 +42,37 @@ void TraceRunner::run() {
 
     for(int i = 0 ; i < 5 ; i += 1) {
 
-        log();
+        log(i);
 
         for(auto & x: s0)
             x.run(scene.get(), s1);
         s0.clear();
 
-        log();
+        log(i);
 
         for(auto & x: s1)
             x.run(result, s2_refract, s2_specular, s2_diffuse);
         s1.clear();
         
-        log();
+        log(i);
 
         for(auto & x: s2_refract)
             x.run(s0);
         s2_refract.clear();
         
-        log();
+        log(i);
 
         for(auto & x: s2_diffuse)
             x.run(s0);
         s2_diffuse.clear();
         
-        log();
+        log(i);
 
         for(auto & x: s2_specular)
             x.run(s0);
         s2_specular.clear();
         
-        log();
+        log(i);
     }
     
 }

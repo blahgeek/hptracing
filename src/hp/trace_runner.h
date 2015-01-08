@@ -11,8 +11,6 @@
 #include "./trace_unit.h"
 #include <set>
 
-using hp::TraceUnit;
-
 namespace hp {
 
 class TraceRunner {
@@ -31,7 +29,7 @@ protected:
     std::vector<Vec> view_dir;
     Vec view_p;
 
-    void log();
+    void log(int i);
 
 public:
     TraceRunner(std::unique_ptr<Scene> && scene, 

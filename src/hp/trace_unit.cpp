@@ -14,7 +14,7 @@ using namespace hp;
 #define MIN_STRENGTH 1e-3
 
 #define SPECULAR_SAMPLE 10
-#define DIFFUSE_SAMPLE 1000
+#define DIFFUSE_SAMPLE 16
 
 #define SAMPLE_THRESHOLD 0.5f
 
@@ -23,6 +23,7 @@ using namespace hp;
 void Unit::S0::run(Scene * scene, std::vector<Unit::S1> & s1) {
     auto result = scene->intersect(start_p, in_dir);
     auto geo = std::get<1>(result);
+
     if(geo) {
         s1.push_back({
             .orig_id = orig_id,

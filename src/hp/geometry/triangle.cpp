@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-06
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-06
+* @Last Modified time: 2015-01-08
 */
 
 #include <iostream>
@@ -21,12 +21,15 @@ Vec Triangle::getNormal(const Vec & point) const {
 
 Number Triangle::do_intersect(const Vec & start_p, const Vec & dir) const {
     Eigen::Matrix<Number, 3, 3> A;
+    Vec b = start_p - p0;
     A << dx, dy, dir;
-    Vec result = A.fullPivLu().solve(start_p);
-    // auto error = (A * result - start_p).norm() / start_p.norm();
+    Vec result = A.fullPivLu().solve(b);
+    // auto error = (A * result - b).norm() / b.norm();
     // std::cerr << "error: " << error << std::endl;
+    // std::cerr << "result: " << result[0] << " " << result[1] << " " << result[2] << std::endl;
     if(result[0] >= 0 && result[0] <= 1 &&
        result[1] >= 0 && result[1] <= 1 && 
+       result[0] + result[1] < 1.0 &&
        result[2] < 0)
         return -result[2];
     return -1;

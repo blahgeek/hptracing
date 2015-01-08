@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-06
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-07
+* @Last Modified time: 2015-01-08
 */
 
 #include <gtest/gtest.h>
@@ -66,7 +66,7 @@ TEST(GeometryTest, triangle) {
     ret = triangle->intersect(Vec(0, 0, 0), p);
     EXPECT_TRUE(ret < 0);
 
-    ret = triangle->intersect(Vec(0.5, 0.5, 0)-p, p);
+    ret = triangle->intersect(Vec(0.3, 0.3, 0)-p, p);
     EXPECT_TRUE(std::abs(ret - 1) < 1e-3);
 
     ret = triangle->intersect(Vec(0.5, 0.5, 0)+p, p);
@@ -74,6 +74,14 @@ TEST(GeometryTest, triangle) {
 
     ret = triangle->intersect(Vec(-3, -3, 0), p);
     EXPECT_TRUE(ret < 0);
+
+    triangle = std::make_unique<Triangle>(Vec(200, 500, 0),
+                                          Vec(250, 400, 0),
+                                          Vec(150, 400, 0));
+    p = Vec(-0.092450, 0.369800, 0.924500); p.normalize();
+    Vec start(250, 250, -500);
+    ret = triangle->intersect(start, p);
+    EXPECT_TRUE(ret > 0);
 }
 
 TEST(GeometryTest, reflection) {

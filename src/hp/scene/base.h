@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-07
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-07
+* @Last Modified time: 2015-01-08
 */
 
 #ifndef __hp_scene_base_h__
@@ -34,6 +34,7 @@ public:
     std::vector<std::pair<std::unique_ptr<Geometry>, int>> geometries;
 
 public:
+    Scene(std::string filename);
     Scene(int num_geo, int num_mat);
     virtual ~Scene(){}
     
