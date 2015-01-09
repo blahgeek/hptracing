@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-07
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-08
+* @Last Modified time: 2015-01-09
 */
 
 #include "./trace_unit.h"
@@ -28,16 +28,16 @@ void Unit::S0::run(Scene * scene, std::vector<Unit::S1> & s1) {
     auto geo = std::get<1>(result);
 
     if(geo) {
-        s1.push_back({
-            .orig_id = orig_id,
-            .depth = depth,
-            .strength = strength,
-            .geometry = geo,
-            .material = std::get<2>(result),
-            .start_p = start_p,
-            .in_dir = in_dir,
-            .intersect_number = std::get<0>(result),
-        });
+        Unit::S1 x;
+        x.orig_id = orig_id,
+        x.depth = depth,
+        x.strength = strength,
+        x.geometry = geo,
+        x.material = std::get<2>(result),
+        x.start_p = start_p,
+        x.in_dir = in_dir,
+        x.intersect_number = std::get<0>(result);
+        s1.push_back(x);
     }
 }
 
@@ -54,52 +54,56 @@ void Unit::S1::run(std::vector<Color> & results,
     results[orig_id] += result;
 
     Color new_strength = strength * (1 - material->dissolve);
-    if(new_strength.norm() > MIN_STRENGTH)
-        s2_refract.push_back({
-            .orig_id = orig_id,
-            .depth = depth,
-            .new_strength = new_strength,
-            .in_dir = in_dir,
-            .normal = normal,
-            .intersect_p = intersect_p,
-            .optical_density = material->optical_density
-        });
+    if(new_strength.norm() > MIN_STRENGTH) {
+        Unit::S2_refract x;
+        x.orig_id = orig_id,
+        x.depth = depth,
+        x.new_strength = new_strength,
+        x.in_dir = in_dir,
+        x.normal = normal,
+        x.intersect_p = intersect_p,
+        x.optical_density = material->optical_density;
+        s2_refract.push_back(x);
+    }
 
     new_strength = strength.cwiseProduct(material->specular);
     auto new_strength_norm = new_strength.norm();
-    if(new_strength_norm > GENERAL_THRESHOLD)
-        s2_specular.push_back({
-            .orig_id = orig_id,
-            .depth = depth,
-            .new_strength = new_strength,
-            .in_dir = in_dir,
-            .normal = normal,
-            .intersect_p = intersect_p,
-        });
+    if(new_strength_norm > GENERAL_THRESHOLD) {
+        Unit::S2_specular x;
+        x.orig_id = orig_id,
+        x.depth = depth,
+        x.new_strength = new_strength,
+        x.in_dir = in_dir,
+        x.normal = normal,
+        x.intersect_p = intersect_p;
+        s2_specular.push_back(x);
+    }
 
     new_strength = strength.cwiseProduct(material->diffuse);
     new_strength_norm = new_strength.norm();
-    if(new_strength_norm > DIFFUSE_SAMPLE_THRESHOLD)
-        s2_diffuse.push_back({
-            .orig_id = orig_id,
-            .depth = depth,
-            .new_strength = new_strength,
-            .in_dir = in_dir,
-            .normal = normal,
-            .intersect_p = intersect_p,
-        });
+    if(new_strength_norm > DIFFUSE_SAMPLE_THRESHOLD) {
+        Unit::S2_diffuse x;
+        x.orig_id = orig_id,
+        x.depth = depth,
+        x.new_strength = new_strength,
+        x.in_dir = in_dir,
+        x.normal = normal,
+        x.intersect_p = intersect_p;
+        s2_diffuse.push_back(x);
+    }
 
     // reuse diffuse strength
     new_strength /= (LIGHT_SAMPLE * DIFFUSE_SAMPLE);
-    if(new_strength_norm > LIGHT_SAMPLE_THRESHOLD)
-        s2_light.push_back({
-            .orig_id = orig_id,
-            .depth = depth,
-            .new_strength = new_strength,
-            .in_dir = in_dir,
-            .normal = normal,
-            .intersect_p = intersect_p
-        });
+    if(new_strength_norm > LIGHT_SAMPLE_THRESHOLD) {
+        Unit::S2_light x;
+        x.orig_id = orig_id,
+        x.depth = depth,
+        x.new_strength = new_strength,
+        x.in_dir = in_dir,
+        x.normal = normal,
+        x.intersect_p = intersect_p;
+        s2_light.push_back(x);
+    }
 
 }
 
@@ -109,38 +113,38 @@ void Unit::S2_light::run(Scene * scene, std::vector<S0> & s0) {
         Vec new_dir = scene->randomRayToLight(intersect_p);
         Number dot = new_dir.dot(normal);
         if((dot > 0) == dir) {
-            s0.push_back({
-                .orig_id = orig_id,
-                .depth = depth + 1,
-                .strength = new_strength * std::abs(dot),
-                .start_p = intersect_p,
-                .in_dir = new_dir
-            });
+            Unit::S0 x;
+            x.orig_id = orig_id,
+            x.depth = depth + 1,
+            x.strength = new_strength * std::abs(dot),
+            x.start_p = intersect_p,
+            x.in_dir = new_dir;
+            s0.push_back(x);
         }
     }
 }
 
 void Unit::S2_refract::run(std::vector<Unit::S0> & s0) {
     Vec refraction_dir = Geometry::getRefraction(in_dir, normal, optical_density);
-    s0.push_back({
-        .orig_id = orig_id,
-        .depth = depth + 1,
-        .strength = new_strength,
-        .start_p = intersect_p,
-        .in_dir = refraction_dir
-    });
+    Unit::S0 x;
+    x.orig_id = orig_id,
+    x.depth = depth + 1,
+    x.strength = new_strength,
+    x.start_p = intersect_p,
+    x.in_dir = refraction_dir;
+    s0.push_back(x);
 }
 
 void Unit::S2_specular::run(std::vector<Unit::S0> & s0) {
     Vec reflection_dir = Geometry::getReflection(in_dir, normal);
 
-    s0.push_back({
-        .orig_id = orig_id,
-        .depth = depth + 1,
-        .strength = new_strength,
-        .start_p = intersect_p,
-        .in_dir = reflection_dir
-    });
+    Unit::S0 x;
+    x.orig_id = orig_id,
+    x.depth = depth + 1,
+    x.strength = new_strength,
+    x.start_p = intersect_p,
+    x.in_dir = reflection_dir;
+    s0.push_back(x);
 }
 
 void Unit::S2_diffuse::run(std::vector<Unit::S0> & s0) {
@@ -155,13 +159,13 @@ void Unit::S2_diffuse::run(std::vector<Unit::S0> & s0) {
         }
 
         Color strength = new_strength * dot_normal / DIFFUSE_SAMPLE;
-        s0.push_back({
-            .orig_id = orig_id,
-            .depth = depth + 1,
-            .strength = strength,
-            .start_p = intersect_p,
-            .in_dir = p
-        });
+        Unit::S0 x;
+        x.orig_id = orig_id,
+        x.depth = depth + 1,
+        x.strength = strength,
+        x.start_p = intersect_p,
+        x.in_dir = p;
+        s0.push_back(x);
     }
 }
 

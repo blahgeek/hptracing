@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-07
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-08
+* @Last Modified time: 2015-01-09
 */
 
 #include "./trace_runner.h"
@@ -32,14 +32,15 @@ void TraceRunner::run() {
     result.resize(view_dir.size(), Color(0, 0, 0));
     int orig_id = 0;
 
-    for(auto & dir: view_dir)
-        s0.push_back({
-            .orig_id = orig_id++,
-            .depth = 0,
-            .strength = Color(1, 1, 1),
-            .start_p = view_p,
-            .in_dir = dir
-        });
+    for(auto & dir: view_dir) {
+        Unit::S0 x;
+        x.orig_id = orig_id++,
+        x.depth = 0,
+        x.strength = Color(1, 1, 1),
+        x.start_p = view_p,
+        x.in_dir = dir;
+        s0.push_back(x);
+    }
 
     for(int i = 0 ; i < 5 ; i += 1) {
 

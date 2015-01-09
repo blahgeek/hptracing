@@ -44,12 +44,12 @@ Vec Scene::randomRayToLight(const Vec & start_p) {
 
 std::tuple<Number, Geometry *, Material *> Scene::intersect(const Vec & start_p, const Vec & dir) {
     Number min_num = -1;
-    std::tuple<Number, Geometry *, Material *> ret = {-1, nullptr, nullptr};
+    std::tuple<Number, Geometry *, Material *> ret(-1, nullptr, nullptr);
     for(auto & x: geometries) {
         auto result = x.first->intersect(start_p, dir);
         if(result >= 0 && (min_num < 0 || result < min_num)) {
             min_num = result;
-            ret = {result, x.first.get(), &(materials[x.second])};
+            ret = std::make_tuple(result, x.first.get(), &(materials[x.second]));
         }
     }
     return ret;
@@ -68,13 +68,13 @@ Scene::Scene(std::string filename) {
            shapes.size(), mats.size());
 
     for(auto & mat: mats) {
-        this->addMaterial({
-            .ambient = Color(mat.ambient[0], mat.ambient[1], mat.ambient[2]),
-            .diffuse = Color(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]),
-            .specular = Color(mat.specular[0], mat.specular[1], mat.specular[2]),
-            .optical_density = mat.ior,
-            .dissolve = mat.dissolve
-        });
+        Material x;
+        x.ambient = Color(mat.ambient[0], mat.ambient[1], mat.ambient[2]),
+        x.diffuse = Color(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]),
+        x.specular = Color(mat.specular[0], mat.specular[1], mat.specular[2]),
+        x.optical_density = mat.ior,
+        x.dissolve = mat.dissolve;
+        this->addMaterial(x);
         hp_log("Mat diffuse: %f %f %f", mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
     }
 
