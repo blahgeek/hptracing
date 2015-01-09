@@ -7,26 +7,53 @@ float _single_intersect(float3 start_p, float3 in_dir,
     float3 t = pa - start_p;
 
     float x, m, n;
+    float * result0 = &n;
+    float * result1 = &m;
+    float * result2 = &x;
 
-    float det_a = a.x * b.y * c.z + a.y * b.z * c.x +
-                     a.z * b.x * c.y - a.z * b.y * c.x -
-                     a.x * b.z * c.y - c.z * a.y * b.x;
-    if(det_a == 0) return -1.0;
+    float4 line[3];
+    line[0] = (float4)(a.x, b.x, c.x, t.x);
+    line[1] = (float4)(a.y, b.y, c.y, t.y);
+    line[2] = (float4)(a.z, b.z, c.z, t.z);
 
-    x = (b.y * c.z - b.z * c.y) * t.x + 
-        (a.z * c.y - a.y * c.z) * t.y +
-        (a.y * b.z - a.z * b.y) * t.z;
-    m = (b.z * c.x - b.x * c.z) * t.x + 
-        (a.x * c.z - a.z * c.x) * t.y +
-        (a.z * b.x - a.x * b.z) * t.z;
-    n = (b.x * c.y - b.y * c.x) * t.x +
-        (a.y * c.x - a.x * c.y) * t.y + 
-        (a.x * b.y - a.y * b.x) * t.z;
+    if(fabs(a.y) > fabs(a.x) && fabs(a.y) > fabs(a.z)) {
+        float4 tmp = line[0];
+        line[0] = line[1];
+        line[1] = tmp;
+        float * tmpx = result0;
+        result0 = result1;
+        result1 = tmpx;
+    } else if (fabs(a.z) > fabs(a.x)) {
+        float4 tmp = line[0];
+        line[0] = line[2];
+        line[2] = tmp;
+        float * tmpx = result0;
+        result0 = result2;
+        result2 = tmpx;
+    }
 
-    if(m >= 0 && m <= 1 && n >= 0 && n <= 1 &&
-       m + n < 1 && x > 0) return x;
+    if(fabs(line[2].y) > fabs(line[1].y)) {
+        float4 tmp = line[1];
+        line[1] = line[2];
+        line[2] = tmp;
+        float * tmpx = result1;
+        result1 = result2;
+        result2 = tmpx;
+    }
 
-    return -1.0;
+    line[1] += line[0] * (-line[1].s0 / line[0].s0);
+    line[2] += line[0] * (-line[2].s0 / line[0].s0);
+    line[2] += line[1] * (-line[2].s1 / line[1].s1);
+
+    *result2 = line[2].w / line[2].z;
+    *result1 = (line[1].w - line[1].z * (*result2)) / line[1].y;
+    *result0 = (line[0].w - line[0].z * (*result2) - line[0].y * (*result1)) / line[0].x;
+
+    if(!isnan(n) && !isnan(m) && !isnan(n)
+       && m >= 0 && m <= 1 && n >= 0 && n <= 1
+       && m + n < 1 && x > 0) return x;
+
+    return -44;
 
 }
 
@@ -42,7 +69,7 @@ __kernel void naive_intersect(__global unit_S0 * v_s0,
 
     int mat_id = -1;
     int geo_id = -1;
-    float intersect_number = -1;
+    float intersect_number = -42;
     for(int i = 0 ; i < scene_mesh_size ; i += 1) {
         int4 triangle = scene_mesh[i];
         float result = _single_intersect(s0.start_p, s0.in_dir,
@@ -57,7 +84,7 @@ __kernel void naive_intersect(__global unit_S0 * v_s0,
     }
 
 
-//    if(geo_id != -1) {
+    if(geo_id != -1) {
         int index = atomic_inc(v_s1_size);
         v_s1[index].orig_id = s0.orig_id;
         v_s1[index].depth = s0.depth;
@@ -67,5 +94,5 @@ __kernel void naive_intersect(__global unit_S0 * v_s0,
         v_s1[index].start_p = s0.start_p;
         v_s1[index].in_dir = s0.in_dir;
         v_s1[index].intersect_number = intersect_number;
-//    }
+    }
 }

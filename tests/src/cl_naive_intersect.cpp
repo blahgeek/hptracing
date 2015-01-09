@@ -69,9 +69,9 @@ TEST(CLTest, naive_intersect) {
     EXPECT_EQ(err, CL_SUCCESS);
     EXPECT_TRUE(kernel);
 
-    cl_float scene_points[] = {0.0, 0.0, 0.0, 
-                               100.0, 0.0, 0.0, 
-                               0.0, 100.0, 0.0};
+    cl_float scene_points[] = {0.0, 0.0, 0.0, 0.0,
+                               100.0, 0.0, 0.0, 0.0,
+                               0.0, 100.0, 0.0, 0.0};
     cl_int scene_mesh[] = {0, 1, 2, 0};
 
     cl_int scene_mesh_size = 1;
@@ -124,5 +124,6 @@ TEST(CLTest, naive_intersect) {
     EXPECT_EQ(err, CL_SUCCESS);
 
     std::cout << "SIZE: " << v_s1_size << std::endl;
+    EXPECT_TRUE(std::abs(v_s1_size - 5000) < 100);
 
 }
