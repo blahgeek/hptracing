@@ -21,6 +21,8 @@ CPPFLAGS = -isystem $(GTEST_DIR)/include
 CPPFLAGS += $(shell pkg-config --libs --cflags eigen3)
 override OPTFLAG ?= -O3
 
+LDFLAGS = -framework OpenCL
+
 override CXXFLAGS += \
 	-ggdb \
 	-Wall -Wextra -Wnon-virtual-dtor -Wno-unused-parameter -Winvalid-pch \
