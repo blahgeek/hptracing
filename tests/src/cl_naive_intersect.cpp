@@ -28,8 +28,7 @@ typedef struct {
     cl_int orig_id;
     cl_int depth;
     cl_float3 strength;
-    cl_int geo_id;
-    cl_int mat_id;
+    cl_int4 geometry;
     cl_float3 start_p, in_dir;
     cl_float intersect_number;
 } unit_S1;
