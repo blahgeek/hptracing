@@ -16,16 +16,16 @@ inline void atomic_add_global(volatile global float *source, const float operand
 
 #define RAND_MAX 0xFFFFFFFFL
 
-inline long rand(long & seed) {
-    seed = (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
-    return (seed >> 16) & RAND_MAX;
+inline long rand(__global long * seed) {
+    *seed = ((*seed) * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
+    return ((*seed) >> 16) & RAND_MAX;
 }
 
-inline long randf(long & seed) {
+inline long randf(__global long * seed) {
     return convert_float(rand(seed)) / convert_float(RAND_MAX) - 0.5;
 }
 
-inline float3 randf3(long & seed) {
+inline float3 randf3(__global long * seed) {
     float3 ret;
     ret.x = randf(seed);
     ret.y = randf(seed);
@@ -153,7 +153,7 @@ __kernel void s1_run(__global unit_S1 * v_s1,
                      __global unit_S2_diffuse * v_s2_diffuse,
                      __global int * v_s2_diffuse_size,
                      __global unit_S2_light * v_s2_light,
-                     __global int * v_s2_light_size
+                     __global int * v_s2_light_size,
                      __global float3 * scene_points,
                      __global Material * v_materials) {
     int global_id = get_global_id(0);
@@ -168,22 +168,23 @@ __kernel void s1_run(__global unit_S1 * v_s1,
 
     float3 normal = normalize(cross(geo_b - geo_a, geo_c - geo_a));
 
-    float3 intersect_p = s1.start_p + intersect_number * in_dir;
+    float3 intersect_p = s1.start_p + s1.intersect_number * s1.in_dir;
     float3 result = s1.strength * mat.ambient;
     result *= fabs(dot(normal, s1.in_dir));
 
-    atomic_add_global(&(v_result[s1.orig_id].x), result.x);
-    atomic_add_global(&(v_result[s1.orig_id].y), result.y);
-    atomic_add_global(&(v_result[s1.orig_id].z), result.z);
+    __global float * target = (__global float *)(&(v_result[s1.orig_id]));
+    atomic_add_global(target, result.x);
+    atomic_add_global(target+1, result.y);
+    atomic_add_global(target+2, result.z);
 
     // refract
     float3 new_strength = s1.strength * (1.0 - mat.dissolve);
     if(length(new_strength) > GENERAL_THRESHOLD) {
         int index = atomic_inc(v_s2_refract_size);
-        v_s2_refract[index].orig_id = orig_id;
-        v_s2_refract[index].depth = depth;
+        v_s2_refract[index].orig_id = s1.orig_id;
+        v_s2_refract[index].depth = s1.depth;
         v_s2_refract[index].new_strength = new_strength;
-        v_s2_refract[index].in_dir = in_dir;
+        v_s2_refract[index].in_dir = s1.in_dir;
         v_s2_refract[index].normal = normal;
         v_s2_refract[index].intersect_p = intersect_p;
         v_s2_refract[index].optical_density = mat.optical_density;
@@ -193,10 +194,10 @@ __kernel void s1_run(__global unit_S1 * v_s1,
     new_strength = s1.strength * mat.specular;
     if(length(new_strength) > GENERAL_THRESHOLD) {
         int index = atomic_inc(v_s2_specular_size);
-        v_s2_specular[index].orig_id = orig_id;
-        v_s2_specular[index].depth = depth;
+        v_s2_specular[index].orig_id = s1.orig_id;
+        v_s2_specular[index].depth = s1.depth;
         v_s2_specular[index].new_strength = new_strength;
-        v_s2_specular[index].in_dir = in_dir;
+        v_s2_specular[index].in_dir = s1.in_dir;
         v_s2_specular[index].normal = normal;
         v_s2_specular[index].intersect_p = intersect_p;
     }
@@ -206,10 +207,10 @@ __kernel void s1_run(__global unit_S1 * v_s1,
     float new_strength_length = length(new_strength);
     if(new_strength_length > DIFFUSE_SAMPLE_THRESHOLD) {
         int index = atomic_inc(v_s2_diffuse_size);
-        v_s2_diffuse[index].orig_id = orig_id;
-        v_s2_diffuse[index].depth = depth;
+        v_s2_diffuse[index].orig_id = s1.orig_id;
+        v_s2_diffuse[index].depth = s1.depth;
         v_s2_diffuse[index].new_strength = new_strength;
-        v_s2_diffuse[index].in_dir = in_dir;
+        v_s2_diffuse[index].in_dir = s1.in_dir;
         v_s2_diffuse[index].normal = normal;
         v_s2_diffuse[index].intersect_p = intersect_p;
     }
@@ -218,10 +219,10 @@ __kernel void s1_run(__global unit_S1 * v_s1,
     new_strength /= (LIGHT_SAMPLE * DIFFUSE_SAMPLE);
     if(new_strength_length > LIGHT_SAMPLE_THRESHOLD) {
         int index = atomic_inc(v_s2_light_size);
-        v_s2_light[index].orig_id = orig_id;
-        v_s2_light[index].depth = depth;
+        v_s2_light[index].orig_id = s1.orig_id;
+        v_s2_light[index].depth = s1.depth;
         v_s2_light[index].new_strength = new_strength;
-        v_s2_light[index].in_dir = in_dir;
+        v_s2_light[index].in_dir = s1.in_dir;
         v_s2_light[index].normal = normal;
         v_s2_light[index].intersect_p = intersect_p;
     }
@@ -292,7 +293,7 @@ __kernel void s2_diffuse_run(__global unit_S2_diffuse * v_s2_diffuse,
     bool dir = dot(s2.in_dir, s2.normal) < 0;
 
     for(int i = 0 ; i < DIFFUSE_SAMPLE ; i += 1) {
-        float3 p = randf3(v_seed[global_id]);
+        float3 p = randf3(v_seed + global_id);
         float dot_normal = dot(p, s2.normal);
         if(dot_normal < 0) {
             dot_normal = -dot_normal;
@@ -325,15 +326,15 @@ __kernel void s2_light_run(__global unit_S2_light * v_s2_light,
 
     for(int i = 0 ; i < LIGHT_SAMPLE ; i += 1) {
         // random ray to light!
-        int rand_light_index = rand(v_seed[global_id]) % v_lights_size;
+        int rand_light_index = rand(v_seed + global_id) % v_lights_size;
         int4 light = v_lights[rand_light_index];
 
         float3 pa = scene_points[light.x];
         float3 pb = scene_points[light.y];
         float3 pc = scene_points[light.z];
 
-        float randx = randf(v_seed[global_id]) + 0.5; 
-        float randy = randf(v_seed[global_id]) + 0.5; 
+        float randx = randf(v_seed + global_id) + 0.5; 
+        float randy = randf(v_seed + global_id) + 0.5; 
         if(randx + randy > 1) {
             randx = 1 - randx;
             randy = 1 - randy;
