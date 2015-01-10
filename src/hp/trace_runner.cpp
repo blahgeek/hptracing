@@ -27,25 +27,28 @@ void TraceRunner::run() {
     std::srand(std::time(0));
 
     result.resize(view_dir.size(), Color(0, 0, 0));
-    size_t orig_id = 0;
 
-    while(orig_id < view_dir.size()) {
+    std::vector<Unit::S0> s0_all;
+    for(size_t i = 0 ; i < view_dir.size(); i += 1) {
+        Unit::S0 x;
+        x.orig_id = i,
+        x.depth = 0,
+        x.strength = Color(1, 1, 1),
+        x.start_p = view_p,
+        x.in_dir = view_dir[i];
+        s0_all.push_back(x);
+    }
+    std::random_shuffle(s0_all.begin(), s0_all.end());
+
+    for(int ii = 0 ; ii < s0_all.size() ; ii += 10000) {
 
         s0.clear(); s1.clear(); 
         s2_specular.clear(); s2_refract.clear(); s2_diffuse.clear(); s2_light.clear();
 
-        for(size_t i = 0 ; i < 10000 && orig_id + i < view_dir.size(); i += 1) {
-            Unit::S0 x;
-            x.orig_id = orig_id + i,
-            x.depth = 0,
-            x.strength = Color(1, 1, 1),
-            x.start_p = view_p,
-            x.in_dir = view_dir[orig_id + i];
-            s0.push_back(x);
-        }
-        orig_id += 10000;
+        s0 = std::vector<Unit::S0>(s0_all.begin() + ii, 
+                                   std::min(s0_all.begin() + ii + 10000, s0_all.end()));
 
-        for(int i = 0 ; i < 5 ; i += 1) {
+        for(int i = 0 ; i < 4 ; i += 1) {
 
             log(i);
 

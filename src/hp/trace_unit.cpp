@@ -53,8 +53,6 @@ void Unit::S1::run(std::vector<Color> & results,
     result *= std::abs(normal.dot(in_dir));
     results[orig_id] += result;
 
-    // if(depth >= 5) return;
-
     Color new_strength = strength * (1 - material->dissolve);
     if(new_strength.norm() > MIN_STRENGTH) {
         Unit::S2_refract x;
