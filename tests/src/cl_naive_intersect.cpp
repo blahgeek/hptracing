@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-09
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-09
+* @Last Modified time: 2015-01-10
 */
 
 #include <iostream>
@@ -34,8 +34,16 @@ typedef struct {
     cl_float intersect_number;
 } unit_S1;
 
-std::string read_file(const char * filename) {
-    std::ifstream t(filename);
+#include <sys/time.h>
+
+uint64_t GetTimeStamp() {
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    return tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
+}
+
+std::string read_file(std::string filename) {
+    std::ifstream t(filename.c_str());
     std::string str((std::istreambuf_iterator<char>(t)),
                     std::istreambuf_iterator<char>());
     return str;
@@ -44,6 +52,7 @@ std::string read_file(const char * filename) {
 TEST(CLTest, naive_intersect) {
     std::string source = read_file("src/hp/unit/types.h.cl") + 
                          read_file("src/hp/unit/naive_intersect.cl");
+    // std::cerr << "Source length: " << source.length() << std::endl;
     cl_device_id device_id;
     auto err = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &device_id, NULL);
     EXPECT_EQ(err, CL_SUCCESS);
@@ -70,20 +79,20 @@ TEST(CLTest, naive_intersect) {
     EXPECT_TRUE(kernel);
 
     cl_float scene_points[] = {0.0, 0.0, 0.0, 0.0,
-                               100.0, 0.0, 0.0, 0.0,
-                               0.0, 100.0, 0.0, 0.0};
+                               1000.0, 0.0, 0.0, 0.0,
+                               0.0, 1000.0, 0.0, 0.0};
     cl_int scene_mesh[] = {0, 1, 2, 0};
 
     cl_int scene_mesh_size = 1;
 
-    unit_S0 v_s0[10000];
-    unit_S1 v_s1[10000];
+    unit_S0 * v_s0 = new unit_S0[1000000];
+    // unit_S1 v_s1[1000000];
     cl_int v_s1_size = 0;
 
-    for(int i = 0 ; i < 100 ; i += 1) {
-        for(int j = 0 ; j < 100 ; j += 1) {
+    for(int i = 0 ; i < 1000 ; i += 1) {
+        for(int j = 0 ; j < 1000 ; j += 1) {
             hp::Vec p(i - 500, j - 500, 500); p.normalize();
-            int index = i * 100 + j;
+            int index = i * 1000 + j;
             v_s0[index].orig_id = index;
             v_s0[index].start_p.s[0] = 500;
             v_s0[index].start_p.s[1] = 500;
@@ -95,9 +104,9 @@ TEST(CLTest, naive_intersect) {
     }
 
     cl_mem s0_mem = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
-                                   sizeof(unit_S0) * 10000, v_s0, &err);
+                                   sizeof(unit_S0) * 1000000, v_s0, &err);
     cl_mem s1_mem = clCreateBuffer(context, CL_MEM_WRITE_ONLY , 
-                                   sizeof(unit_S1) * 10000, NULL, &err);
+                                   sizeof(unit_S1) * 1000000, NULL, &err);
     cl_mem s1_size_mem = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,  
                                         sizeof(cl_int), &(v_s1_size), &err);
     cl_mem scene_points_mem = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
@@ -113,17 +122,22 @@ TEST(CLTest, naive_intersect) {
     clSetKernelArg(kernel, 4, sizeof(cl_mem), &scene_mesh_mem);
     clSetKernelArg(kernel, 5, sizeof(cl_int), &scene_mesh_size);
 
-    size_t global = 10000;
-    size_t local = 100;
+    auto t0 = GetTimeStamp();
+
+    size_t global = 1000000;
+    size_t local = 200;
     err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
     EXPECT_EQ(err, CL_SUCCESS);
     clFinish(commands);
 
-    clEnqueueReadBuffer(commands, s1_mem, CL_TRUE, 0, sizeof(unit_S1) * 10000, v_s1, 0, NULL, NULL);
+    // clEnqueueReadBuffer(commands, s1_mem, CL_TRUE, 0, sizeof(unit_S1) * 10000, v_s1, 0, NULL, NULL);
     err = clEnqueueReadBuffer(commands, s1_size_mem, CL_TRUE, 0, sizeof(cl_int), &(v_s1_size), 0, NULL, NULL);
+    auto t1 = GetTimeStamp();
+
     EXPECT_EQ(err, CL_SUCCESS);
 
+    std::cout << "TIME: " << t1 - t0 << std::endl;
     std::cout << "SIZE: " << v_s1_size << std::endl;
-    EXPECT_TRUE(std::abs(v_s1_size - 5000) < 100);
+    EXPECT_TRUE(std::abs(v_s1_size - 500000) < 1000);
 
 }

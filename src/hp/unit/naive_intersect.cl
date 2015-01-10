@@ -16,14 +16,16 @@ float _single_intersect(float3 start_p, float3 in_dir,
     line[1] = (float4)(a.y, b.y, c.y, t.y);
     line[2] = (float4)(a.z, b.z, c.z, t.z);
 
-    if(fabs(a.y) > fabs(a.x) && fabs(a.y) > fabs(a.z)) {
+    float3 abs_a = fabs(a);
+
+    if(abs_a.y > abs_a.x && abs_a.y > abs_a.z) {
         float4 tmp = line[0];
         line[0] = line[1];
         line[1] = tmp;
         float * tmpx = result0;
         result0 = result1;
         result1 = tmpx;
-    } else if (fabs(a.z) > fabs(a.x)) {
+    } else if (abs_a.z > abs_a.x) {
         float4 tmp = line[0];
         line[0] = line[2];
         line[2] = tmp;
@@ -49,8 +51,8 @@ float _single_intersect(float3 start_p, float3 in_dir,
     *result1 = (line[1].w - line[1].z * (*result2)) / line[1].y;
     *result0 = (line[0].w - line[0].z * (*result2) - line[0].y * (*result1)) / line[0].x;
 
-    if(!isnan(n) && !isnan(m) && !isnan(n)
-       && m >= 0 && m <= 1 && n >= 0 && n <= 1
+    // nan >= 0 returns false
+    if(m >= 0 && m <= 1 && n >= 0 && n <= 1
        && m + n < 1 && x > 0) return x;
 
     return -44;
@@ -73,9 +75,9 @@ __kernel void naive_intersect(__global unit_S0 * v_s0,
     for(int i = 0 ; i < scene_mesh_size ; i += 1) {
         int4 triangle = scene_mesh[i];
         float result = _single_intersect(s0.start_p, s0.in_dir,
-                                            scene_points[triangle.x], 
-                                            scene_points[triangle.y],
-                                            scene_points[triangle.z]);
+                                         scene_points[triangle.x], 
+                                         scene_points[triangle.y],
+                                         scene_points[triangle.z]);
         if(result > 0 && (intersect_number < 0 || result < intersect_number)) {
             intersect_number = result;
             geo_id = i;

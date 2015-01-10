@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-06
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-08
+* @Last Modified time: 2015-01-10
 */
 
 #include <gtest/gtest.h>
@@ -82,6 +82,22 @@ TEST(GeometryTest, triangle) {
     Vec start(250, 250, -500);
     ret = triangle->intersect(start, p);
     EXPECT_TRUE(ret > 0);
+}
+
+TEST(Geometry, triangle_speed_test) {
+    auto triangle = std::make_unique<Triangle>(Vec(0,0,0), 
+                                               Vec(1000, 0, 0),
+                                               Vec(0, 1000, 0));
+    Vec start_p(500, 500, -500);
+    int ret = 0;
+    for(int i = 0 ; i < 1000 ; i += 1) {
+        for(int j = 0 ; j < 1000 ; j += 1) {
+            Vec dir(i-500, j-500, 500); dir.normalize();
+            Number result = triangle->intersect(start_p, dir);
+            if(result > 0) ret += 1;
+        }
+    }
+    EXPECT_TRUE(std::abs(ret - 500000) < 1000);
 }
 
 TEST(GeometryTest, reflection) {
