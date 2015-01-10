@@ -34,6 +34,7 @@ TEST(CLTest, naive_intersect) {
     cl_int scene_mesh_size = 1;
 
     cl::unit_S0 * v_s0 = new cl::unit_S0[1000000];
+    cl_int v_s0_size = 1000000;
     // unit_S1 v_s1[1000000];
     cl_int v_s1_size = 0;
 
@@ -63,15 +64,16 @@ TEST(CLTest, naive_intersect) {
                                                     sizeof(scene_mesh), scene_mesh);
 
     clSetKernelArg(kernel, 0, sizeof(cl_mem), &s0_mem);
-    clSetKernelArg(kernel, 1, sizeof(cl_mem), &s1_mem);
-    clSetKernelArg(kernel, 2, sizeof(cl_mem), &s1_size_mem);
-    clSetKernelArg(kernel, 3, sizeof(cl_mem), &scene_points_mem);
-    clSetKernelArg(kernel, 4, sizeof(cl_mem), &scene_mesh_mem);
-    clSetKernelArg(kernel, 5, sizeof(cl_int), &scene_mesh_size);
+    clSetKernelArg(kernel, 1, sizeof(cl_int), &v_s0_size);
+    clSetKernelArg(kernel, 2, sizeof(cl_mem), &s1_mem);
+    clSetKernelArg(kernel, 3, sizeof(cl_mem), &s1_size_mem);
+    clSetKernelArg(kernel, 4, sizeof(cl_mem), &scene_points_mem);
+    clSetKernelArg(kernel, 5, sizeof(cl_mem), &scene_mesh_mem);
+    clSetKernelArg(kernel, 6, sizeof(cl_int), &scene_mesh_size);
 
     auto t0 = GetTimeStamp();
 
-    size_t global = 1000000;
+    size_t global = 1000200;
     size_t local = 200;
     clEnqueueNDRangeKernel(cl_program.commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
     clFinish(cl_program.commands);

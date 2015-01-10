@@ -104,12 +104,14 @@ float _single_intersect(float3 start_p, float3 in_dir,
 }
 
 __kernel void naive_intersect(__global unit_S0 * v_s0,
+                              const int v_s0_size,
                               __global unit_S1 * v_s1,
                               __global int * v_s1_size,
                               __global float3 * scene_points,
                               __global int4 * scene_mesh,
                               const int scene_mesh_size) {
     int global_id = get_global_id(0);
+    if(global_id >= v_s0_size) return;
 
     unit_S0 s0 = v_s0[global_id];
 

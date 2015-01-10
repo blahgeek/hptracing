@@ -58,3 +58,9 @@ cl_mem hp::CLProgram::createBuffer(cl_mem_flags flags, size_t len, void * host_p
     hp_assert(err == CL_SUCCESS);
     return buffer;
 }
+
+hp::CLProgram::~CLProgram() {
+    clReleaseProgram(program);
+    clReleaseCommandQueue(commands);
+    clReleaseContext(context);
+}

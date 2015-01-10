@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-07
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-09
+* @Last Modified time: 2015-01-10
 */
 
 #include "./trace_unit.h"
@@ -52,6 +52,8 @@ void Unit::S1::run(std::vector<Color> & results,
     Color result = strength.cwiseProduct(material->ambient);
     result *= std::abs(normal.dot(in_dir));
     results[orig_id] += result;
+
+    // if(depth >= 5) return;
 
     Color new_strength = strength * (1 - material->dissolve);
     if(new_strength.norm() > MIN_STRENGTH) {
