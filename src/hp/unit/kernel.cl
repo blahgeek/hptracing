@@ -23,16 +23,16 @@ inline void atomic_add_global(volatile global float *source, const float operand
 
 #define RAND_MAX 0xFFFFFFFFL
 
-inline long rand(__global long * seed) {
+inline long rand(long * seed) {
     *seed = ((*seed) * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
     return ((*seed) >> 16) & RAND_MAX;
 }
 
-inline long randf(__global long * seed) {
-    return convert_float(rand(seed)) / convert_float(RAND_MAX) - 0.5;
+inline float randf(long * seed) {
+    return convert_float(rand(seed)) / convert_float(RAND_MAX) - 0.5f;
 }
 
-inline float3 randf3(__global long * seed) {
+inline float3 randf3(long * seed) {
     float3 ret;
     ret.x = randf(seed);
     ret.y = randf(seed);
@@ -45,14 +45,14 @@ inline float3 randf3(__global long * seed) {
 #define DIFFUSE_SAMPLE (16 * DIFFICULTY)
 #define LIGHT_SAMPLE (2 * DIFFICULTY)
 
-#define GENERAL_THRESHOLD (5e-3 / float(DIFFICULTY))
+#define GENERAL_THRESHOLD (5e-3f / float(DIFFICULTY))
 
-#define LIGHT_SAMPLE_THRESHOLD (1.0 / DIFFUSE_SAMPLE / 2.0)
-#define DIFFUSE_SAMPLE_THRESHOLD (1.0 / DIFFUSE_SAMPLE * 1.5)
+#define LIGHT_SAMPLE_THRESHOLD (1.0f / DIFFUSE_SAMPLE / 2.0f)
+#define DIFFUSE_SAMPLE_THRESHOLD (1.0f / DIFFUSE_SAMPLE * 1.5f)
 
 float _single_intersect(float3 _start_p, float3 in_dir,
                         float3 pa, float3 pb, float3 pc) {
-    float3 start_p = _start_p + 0.5 * in_dir;
+    float3 start_p = _start_p + 0.5f * in_dir;
 
     float3 a = in_dir;
     float3 b = pa - pb;
@@ -106,7 +106,7 @@ float _single_intersect(float3 _start_p, float3 in_dir,
 
     // nan >= 0 returns false
     if(m >= 0 && m <= 1 && n >= 0 && n <= 1
-       && m + n < 1 && x > 0) return x + 0.5;
+       && m + n < 1 && x > 0) return x + 0.5f;
 
     return -44;
 
@@ -184,7 +184,7 @@ __kernel void s1_run(__global int * v_sizes,
     atomic_add_global(target+2, result.z);
 
     // refract
-    float3 new_strength = s1.strength * (1.0 - mat.dissolve);
+    float3 new_strength = s1.strength * (1.0f - mat.dissolve);
     if(length(new_strength) > GENERAL_THRESHOLD) {
         int index = atomic_inc(v_sizes + S2_REFRACT_SIZE_OFFSET);
         v_s2_refract[index].orig_id = s1.orig_id;
@@ -244,7 +244,7 @@ __kernel void s2_refract_run(__global int * v_sizes,
 
     // compute refraction
     float cos_alpha = dot(s2.in_dir, -s2.normal);
-    float reverse = 1.0;
+    float reverse = 1.0f;
     if(cos_alpha < 0) reverse = -1;
     float alpha = acos(cos_alpha);
     float3 p = cos_alpha * s2.normal;
@@ -274,7 +274,7 @@ __kernel void s2_specular_run(__global int * v_sizes,
     // compute reflection
     float dot_ = dot(s2.in_dir, s2.normal);
     float3 projection = dot_ * s2.normal;
-    float3 reflection_dir = s2.in_dir - 2.0 * projection;
+    float3 reflection_dir = s2.in_dir - 2.0f * projection;
 
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
     v_s0[index].orig_id = s2.orig_id;
@@ -295,8 +295,10 @@ __kernel void s2_diffuse_run(__global int * v_sizes,
 
     bool dir = dot(s2.in_dir, s2.normal) < 0;
 
+    long rand_seed = v_seed[global_id] + global_id;
+
     for(int i = 0 ; i < DIFFUSE_SAMPLE ; i += 1) {
-        float3 p = randf3(v_seed + global_id);
+        float3 p = randf3(&rand_seed);
         float dot_normal = dot(p, s2.normal);
         if(dot_normal < 0) {
             dot_normal = -dot_normal;
@@ -306,7 +308,7 @@ __kernel void s2_diffuse_run(__global int * v_sizes,
         int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
         v_s0[index].orig_id = s2.orig_id;
         v_s0[index].depth = s2.depth + 1;
-        v_s0[index].strength = s2.new_strength;
+        v_s0[index].strength = strength;
         v_s0[index].start_p = s2.intersect_p;
         v_s0[index].in_dir = p;
     }
@@ -326,17 +328,19 @@ __kernel void s2_light_run(__global int * v_sizes,
 
     bool dir = dot(s2.in_dir, s2.normal) < 0;
 
+    long rand_seed = v_seed[global_id] + global_id;
+
     for(int i = 0 ; i < LIGHT_SAMPLE ; i += 1) {
         // random ray to light!
-        int rand_light_index = rand(v_seed + global_id) % v_lights_size;
+        int rand_light_index = rand(&rand_seed) % v_lights_size;
         int4 light = v_lights[rand_light_index];
 
         float3 pa = scene_points[light.x];
         float3 pb = scene_points[light.y];
         float3 pc = scene_points[light.z];
 
-        float randx = randf(v_seed + global_id) + 0.5; 
-        float randy = randf(v_seed + global_id) + 0.5; 
+        float randx = randf(&rand_seed) + 0.5f; 
+        float randy = randf(&rand_seed) + 0.5f; 
         if(randx + randy > 1) {
             randx = 1 - randx;
             randy = 1 - randy;

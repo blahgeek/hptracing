@@ -63,6 +63,8 @@ cl::Scene::Scene(std::string filename) {
             triangle.s[3] = shape.mesh.material_ids[i / 3];
             this->geometries.push_back(triangle);
             this->registerGeometry(triangle);
+
+            hp_log("   Triangle: %d %d %d %d", triangle.s[0], triangle.s[1], triangle.s[2], triangle.s[3]);
         }
     }
 

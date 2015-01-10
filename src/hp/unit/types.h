@@ -30,7 +30,7 @@ typedef struct {
     cl_float3 strength;
     cl_int4 geometry; // xyz is index of points, w is mat_id
     cl_float3 start_p, in_dir;
-    float intersect_number;
+    cl_float intersect_number;
 } unit_S1;
 
 typedef struct {
@@ -38,7 +38,7 @@ typedef struct {
     cl_int depth;
     cl_float3 new_strength;
     cl_float3 in_dir, normal, intersect_p;
-    float optical_density;
+    cl_float optical_density;
 } unit_S2_refract;
 
 typedef struct {
@@ -66,8 +66,8 @@ typedef struct {
     cl_float3 ambient;
     cl_float3 diffuse;
     cl_float3 specular;
-    float optical_density;
-    float dissolve;
+    cl_float optical_density;
+    cl_float dissolve;
 } Material;
 
 }

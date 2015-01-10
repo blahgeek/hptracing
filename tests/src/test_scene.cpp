@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-07
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-08
+* @Last Modified time: 2015-01-10
 */
 
 #include <gtest/gtest.h>
@@ -42,5 +42,13 @@ TEST(SceneTest, base) {
     cerr << "p[2]: " << intersect_p[2] << endl;
     EXPECT_TRUE(intersect_p[2] < 200);
 
+}
+
+TEST(SceneTest, load) {
+    auto scene = std::make_unique<Scene>(std::string("obj/cornell_box.obj"));
+    Vec p(-0.123051, -0.00992351, 0.992351); p.normalize();
+    auto result = scene->intersect(Vec(200, 200, -500), p);
+    auto ret = std::get<0>(result);
+    cerr << "Ret: " << ret << endl;
 }
 
