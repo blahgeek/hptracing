@@ -50,8 +50,10 @@ inline float3 randf3(__global long * seed) {
 #define LIGHT_SAMPLE_THRESHOLD (1.0 / DIFFUSE_SAMPLE / 2.0)
 #define DIFFUSE_SAMPLE_THRESHOLD (1.0 / DIFFUSE_SAMPLE * 1.5)
 
-float _single_intersect(float3 start_p, float3 in_dir,
+float _single_intersect(float3 _start_p, float3 in_dir,
                         float3 pa, float3 pb, float3 pc) {
+    float3 start_p = _start_p + 0.5 * in_dir;
+
     float3 a = in_dir;
     float3 b = pa - pb;
     float3 c = pa - pc;
@@ -104,7 +106,7 @@ float _single_intersect(float3 start_p, float3 in_dir,
 
     // nan >= 0 returns false
     if(m >= 0 && m <= 1 && n >= 0 && n <= 1
-       && m + n < 1 && x > 0) return x;
+       && m + n < 1 && x > 0) return x + 0.5;
 
     return -44;
 
@@ -176,7 +178,7 @@ __kernel void s1_run(__global int * v_sizes,
     float3 result = s1.strength * mat.ambient;
     result *= fabs(dot(normal, s1.in_dir));
 
-    __global float * target = v_result + s1.orig_id;
+    __global float * target = v_result + s1.orig_id * 3;
     atomic_add_global(target, result.x);
     atomic_add_global(target+1, result.y);
     atomic_add_global(target+2, result.z);

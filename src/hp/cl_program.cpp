@@ -64,3 +64,13 @@ hp::CLProgram::~CLProgram() {
     clReleaseCommandQueue(commands);
     clReleaseContext(context);
 }
+
+void hp::CLProgram::readBuffer(cl_mem buffer, size_t len, void * p) {
+    auto err = clEnqueueReadBuffer(commands, buffer, CL_TRUE, 0, len, p, 0, NULL, NULL);
+    hp_assert(err == CL_SUCCESS);
+}
+
+void hp::CLProgram::writeBuffer(cl_mem buffer, size_t len, void * p) {
+    auto err = clEnqueueWriteBuffer(commands, buffer, CL_TRUE, 0, len, p, 0, NULL, NULL);
+    hp_assert(err == CL_SUCCESS);
+}

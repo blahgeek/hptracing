@@ -79,12 +79,24 @@ TEST(CLTest, naive_intersect) {
     clEnqueueNDRangeKernel(cl_program.commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
     clFinish(cl_program.commands);
 
+    clReleaseKernel(kernel);
+
+    kernel = cl_program.getKernel("naive_intersect");
+    clSetKernelArg(kernel, 0, sizeof(cl_mem), &v_sizes_mem);
+    clSetKernelArg(kernel, 1, sizeof(cl_mem), &s0_mem);
+    clSetKernelArg(kernel, 2, sizeof(cl_mem), &s1_mem);
+    clSetKernelArg(kernel, 3, sizeof(cl_mem), &scene_points_mem);
+    clSetKernelArg(kernel, 4, sizeof(cl_mem), &scene_mesh_mem);
+    clSetKernelArg(kernel, 5, sizeof(cl_int), &scene_mesh_size);
+    clEnqueueNDRangeKernel(cl_program.commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
+    clFinish(cl_program.commands);
+
     // clEnqueueReadBuffer(commands, s1_mem, CL_TRUE, 0, sizeof(unit_S1) * 10000, v_s1, 0, NULL, NULL);
     clEnqueueReadBuffer(cl_program.commands, v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes, 0, NULL, NULL);
     auto t1 = GetTimeStamp();
 
     std::cout << "TIME: " << t1 - t0 << std::endl;
     std::cout << "SIZE: " << v_sizes[1] << std::endl;
-    EXPECT_TRUE(std::abs(v_sizes[1] - 500000) < 1000);
+    EXPECT_TRUE(std::abs(v_sizes[1] - 500000) < 2000);
 
 }

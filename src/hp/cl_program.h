@@ -21,6 +21,8 @@ public:
 
     cl_kernel getKernel(const char * kernel_name);
     cl_mem createBuffer(cl_mem_flags flags, size_t len, void * host_p);
+    void readBuffer(cl_mem buffer, size_t len, void * p);
+    void writeBuffer(cl_mem buffer, size_t len, void * p);
     CLProgram();
     ~CLProgram();
 
