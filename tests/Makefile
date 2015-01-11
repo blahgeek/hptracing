@@ -19,7 +19,7 @@ SRC_EXT = cpp
 # the compiler doesn't generate warnings in Google Test headers.
 CPPFLAGS = -isystem $(GTEST_DIR)/include
 CPPFLAGS += $(shell pkg-config --libs --cflags eigen3)
-override OPTFLAG ?= -O3
+override OPTFLAG ?= -O0
 
 LDFLAGS = -framework OpenCL
 

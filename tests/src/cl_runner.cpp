@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-07
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-10
+* @Last Modified time: 2015-01-11
 */
 
 #include <iostream>
@@ -19,6 +19,7 @@ using namespace hp;
         (X).s[0] = (Y)[0]; \
         (X).s[1] = (Y)[1]; \
         (X).s[2] = (Y)[2]; \
+        (X).s[3] = 0; \
     } while(0)
 
 TEST(CLRunner, run) {
@@ -50,10 +51,11 @@ TEST(CLRunner, run) {
     for(int y = 500 - 1 ; y >= 0 ; y --) {
         for(int x = 0 ; x < 500 ; x ++) {
             for(int k = 0 ; k < 3 ; k += 1) {
-                auto val = runner->result[x * 500 + y + k];
+                auto val = runner->result[(x * 500 + y) * 3 + k];
                 fout << int(255 * (1.0 - std::exp(-val))) << " ";
             }
         }
+        fout << std::endl;
     }
     fout.close();
 }

@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-10
+* @Last Modified time: 2015-01-11
 */
 
 #include <iostream>
@@ -37,7 +37,7 @@ TEST(CLTest, s1_run) {
                                                    sizeof(cl::unit_S2_light) * 100000, nullptr);
     // Result data
     cl_mem results_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
-                                                  sizeof(cl_float) * 3, nullptr);
+                                                  sizeof(cl_float) * 6, nullptr);
     cl_mem points_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                                  sizeof(cl_float3) * scene->points.size(),
                                                  scene->points.data());
@@ -64,9 +64,12 @@ TEST(CLTest, s1_run) {
     ASSIGN_F3(unit.in_dir, Vec(-0.123051, -0.00992351, 0.992351));
     unit.intersect_number = 1067.36;
 
-    cl_program->writeBuffer(s1_mem, sizeof(unit), &unit);
+    cl::unit_S1 units[2]; units[0] = unit; units[1] = unit;
+    // units[1].orig_id = 1;
+
+    cl_program->writeBuffer(s1_mem, sizeof(unit) * 2, units);
     cl_int v_sizes[10] = {0};
-    v_sizes[1] = 1;
+    v_sizes[1] = 2;
     cl_program->writeBuffer(v_sizes_mem, sizeof(v_sizes), v_sizes);
 
     clSetKernelArg(kernel, 0, sizeof(cl_mem), &v_sizes_mem);
@@ -86,11 +89,11 @@ TEST(CLTest, s1_run) {
 
     cl_program->readBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
 
-    cl::unit_S2_diffuse s2_diffuse;
-    cl_program->readBuffer(s2_diffuse_mem, sizeof(cl::unit_S2_diffuse), &s2_diffuse);
+    cl::unit_S2_diffuse s2_diffuse[2];
+    cl_program->readBuffer(s2_diffuse_mem, sizeof(cl::unit_S2_diffuse) * 2, s2_diffuse);
 
-    cl_float result[3];
-    cl_program->readBuffer(results_mem, sizeof(cl_float) * 3, result);
+    cl_float result[6];
+    cl_program->readBuffer(results_mem, sizeof(cl_float) * 6, result);
 
     __builtin_trap();
 

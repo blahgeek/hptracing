@@ -47,9 +47,12 @@ TEST(CLTest, s2_diffuse_run) {
     unit.orig_id = 0;
     unit.depth = 0;
     ASSIGN_F3(unit.new_strength, Vec(1,1,1));
-    ASSIGN_F3(unit.in_dir, Vec(-0.123051003, -0.00992351025, 0.992350996));
-    ASSIGN_F3(unit.normal, Vec(0,0,-1));
-    ASSIGN_F3(unit.intersect_p, Vec(68.6602783, 189.408035, 559.195801));
+    // (191.123154 548.799988 235.960510) -> (0.337651 -0.731054 0.592918)
+    ASSIGN_F3(unit.in_dir, Vec(0.337651, -0.731054, 0.592918));
+    ASSIGN_F3(unit.normal, Vec(0,-1,0));
+    Vec start_p = Vec(191.123154, 548.799988, 235.960510);
+    Vec intersect_p = start_p + Vec(0.337651, -0.731054, 0.592918) * 1.573924;
+    ASSIGN_F3(unit.intersect_p, intersect_p);
 
     cl_program->writeBuffer(s2_diffuse_mem, sizeof(unit), &unit);
 

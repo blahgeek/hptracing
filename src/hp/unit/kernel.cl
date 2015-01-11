@@ -60,9 +60,6 @@ float _single_intersect(float3 _start_p, float3 in_dir,
     float3 t = pa - start_p;
 
     float x, m, n;
-    float * result0 = &n;
-    float * result1 = &m;
-    float * result2 = &x;
 
     float4 line[3];
     line[0] = (float4)(a.x, b.x, c.x, t.x);
@@ -75,38 +72,30 @@ float _single_intersect(float3 _start_p, float3 in_dir,
         float4 tmp = line[0];
         line[0] = line[1];
         line[1] = tmp;
-        float * tmpx = result0;
-        result0 = result1;
-        result1 = tmpx;
     } else if (abs_a.z > abs_a.x) {
         float4 tmp = line[0];
         line[0] = line[2];
         line[2] = tmp;
-        float * tmpx = result0;
-        result0 = result2;
-        result2 = tmpx;
     }
 
     if(fabs(line[2].y) > fabs(line[1].y)) {
         float4 tmp = line[1];
         line[1] = line[2];
         line[2] = tmp;
-        float * tmpx = result1;
-        result1 = result2;
-        result2 = tmpx;
     }
 
     line[1] += line[0] * (-line[1].s0 / line[0].s0);
     line[2] += line[0] * (-line[2].s0 / line[0].s0);
     line[2] += line[1] * (-line[2].s1 / line[1].s1);
 
-    *result2 = line[2].w / line[2].z;
-    *result1 = (line[1].w - line[1].z * (*result2)) / line[1].y;
-    *result0 = (line[0].w - line[0].z * (*result2) - line[0].y * (*result1)) / line[0].x;
+    n = line[2].w / line[2].z;
+    m = (line[1].w - line[1].z * n) / line[1].y;
+    x = (line[0].w - line[0].z * n - line[0].y * m) / line[0].x;
 
     // nan >= 0 returns false
     if(m >= 0 && m <= 1 && n >= 0 && n <= 1
-       && m + n < 1 && x > 0) return x + 0.5f;
+       && m + n < 1 && x > 0) 
+        return x + 0.5f;
 
     return -44;
 
@@ -123,12 +112,13 @@ __kernel void naive_intersect(__global int * v_sizes,
 
     unit_S0 s0 = v_s0[global_id];
 
-    int mat_id = -1;
     int geo_id = -1;
     float intersect_number = -42;
     int4 triangle;
     for(int i = 0 ; i < scene_mesh_size ; i += 1) {
+        // debug
         triangle = scene_mesh[i];
+//        if(!(triangle.w == 5 && triangle.x == 12)) continue;
         float result = _single_intersect(s0.start_p, s0.in_dir,
                                          scene_points[triangle.x], 
                                          scene_points[triangle.y],
@@ -136,7 +126,6 @@ __kernel void naive_intersect(__global int * v_sizes,
         if(result > 0 && (intersect_number < 0 || result < intersect_number)) {
             intersect_number = result;
             geo_id = i;
-            mat_id = triangle.w;
         }
     }
 
@@ -146,7 +135,7 @@ __kernel void naive_intersect(__global int * v_sizes,
         v_s1[index].orig_id = s0.orig_id;
         v_s1[index].depth = s0.depth;
         v_s1[index].strength = s0.strength;
-        v_s1[index].geometry = triangle;
+        v_s1[index].geometry = scene_mesh[geo_id];
         v_s1[index].start_p = s0.start_p;
         v_s1[index].in_dir = s0.in_dir;
         v_s1[index].intersect_number = intersect_number;
@@ -182,6 +171,7 @@ __kernel void s1_run(__global int * v_sizes,
     atomic_add_global(target, result.x);
     atomic_add_global(target+1, result.y);
     atomic_add_global(target+2, result.z);
+//    v_result[s1.orig_id*3+1] = 255.0 * result.y;
 
     // refract
     float3 new_strength = s1.strength * (1.0f - mat.dissolve);
@@ -304,7 +294,7 @@ __kernel void s2_diffuse_run(__global int * v_sizes,
             dot_normal = -dot_normal;
             if(dir) p = -p;
         }
-        float3 strength = s2.new_strength * dot_normal / DIFFUSE_SAMPLE;
+        float3 strength = s2.new_strength * dot_normal / convert_float(DIFFUSE_SAMPLE);
         int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
         v_s0[index].orig_id = s2.orig_id;
         v_s0[index].depth = s2.depth + 1;
@@ -312,6 +302,7 @@ __kernel void s2_diffuse_run(__global int * v_sizes,
         v_s0[index].start_p = s2.intersect_p;
         v_s0[index].in_dir = p;
     }
+    v_seed[global_id] = rand_seed;
 }
 
 __kernel void s2_light_run(__global int * v_sizes,
@@ -357,4 +348,5 @@ __kernel void s2_light_run(__global int * v_sizes,
             v_s0[index].in_dir = p;
         }
     }
+    v_seed[global_id] = rand_seed;
 }

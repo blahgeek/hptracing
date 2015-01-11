@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-10
+* @Last Modified time: 2015-01-11
 */
 
 #include <iostream>
@@ -18,6 +18,7 @@
         (X).s[0] = (Y)[0]; \
         (X).s[1] = (Y)[1]; \
         (X).s[2] = (Y)[2]; \
+        (X).s[3] = 0; \
     } while(0)
 
 #define CL_FLOAT3_TO_VEC(X) \
