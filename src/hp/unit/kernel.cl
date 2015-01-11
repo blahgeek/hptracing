@@ -5,6 +5,8 @@
 #define S2_DIFFUSE_SIZE_OFFSET 4
 #define S2_LIGHT_SIZE_OFFSET 5
 
+#define DATA_SIZE_OFFSET 6
+
 inline void atomic_add_global(volatile global float *source, const float operand) {
     union {
         unsigned int intVal;
@@ -102,15 +104,17 @@ float _single_intersect(float3 _start_p, float3 in_dir,
 }
 
 __kernel void naive_intersect(__global int * v_sizes,
-                              __global unit_S0 * v_s0,
-                              __global unit_S1 * v_s1,
+                              __global unit_data * v_data,
+                              __global int * v_s0,
+                              __global int * v_s1,
                               __global float3 * scene_points,
                               __global int4 * scene_mesh,
                               const int scene_mesh_size) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S0_SIZE_OFFSET]) return;
 
-    unit_S0 s0 = v_s0[global_id];
+    int this_id = v_s0[global_id];
+    unit_data s0 = v_data[this_id];
 
     int geo_id = -1;
     float intersect_number = -42;
@@ -127,32 +131,30 @@ __kernel void naive_intersect(__global int * v_sizes,
         }
     }
 
-
     if(geo_id != -1) {
         int index = atomic_inc(v_sizes + S1_SIZE_OFFSET);
-        v_s1[index].orig_id = s0.orig_id;
-//        v_s1[index].depth = s0.depth;
-        v_s1[index].strength = s0.strength;
-        v_s1[index].geometry = scene_mesh[geo_id];
-        v_s1[index].start_p = s0.start_p;
-        v_s1[index].in_dir = s0.in_dir;
-        v_s1[index].intersect_number = intersect_number;
+        v_s1[index] = this_id;
+
+        v_data[this_id].geometry = scene_mesh[geo_id];
+        v_data[this_id].intersect_number = intersect_number;
     }
 }
 
 __kernel void s1_run(__global int * v_sizes,
-                     __global unit_S1 * v_s1,
+                     __global unit_data * v_data,
+                     __global int * v_s1,
                      __global float * v_result, // store final result
-                     __global unit_S2_refract * v_s2_refract,
-                     __global unit_S2_specular * v_s2_specular,
-                     __global unit_S2_diffuse * v_s2_diffuse,
-                     __global unit_S2_light * v_s2_light,
+                     __global int * v_s2_refract,
+                     __global int * v_s2_specular,
+                     __global int * v_s2_diffuse,
+                     __global int * v_s2_light,
                      __global float3 * scene_points,
                      __global Material * v_materials) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S1_SIZE_OFFSET]) return;
 
-    unit_S1 s1 = v_s1[global_id];
+    int this_id = v_s1[global_id];
+    unit_data s1 = v_data[this_id];
 
     float3 geo_a = scene_points[s1.geometry.x];
     float3 geo_b = scene_points[s1.geometry.y];
@@ -170,29 +172,24 @@ __kernel void s1_run(__global int * v_sizes,
     atomic_add_global(target+1, result.y);
     atomic_add_global(target+2, result.z);
 
+    v_data[this_id].intersect_p = intersect_p;
+    v_data[this_id].normal = normal;
+
     // refract
     float3 new_strength = s1.strength * (1.0f - mat.dissolve);
     if(length(new_strength) > GENERAL_THRESHOLD) {
         int index = atomic_inc(v_sizes + S2_REFRACT_SIZE_OFFSET);
-        v_s2_refract[index].orig_id = s1.orig_id;
-//        v_s2_refract[index].depth = s1.depth;
-        v_s2_refract[index].new_strength = new_strength;
-        v_s2_refract[index].in_dir = s1.in_dir;
-        v_s2_refract[index].normal = normal;
-        v_s2_refract[index].intersect_p = intersect_p;
-        v_s2_refract[index].optical_density = mat.optical_density;
+        v_s2_refract[index] = this_id;
+        v_data[this_id].new_strength_refract = new_strength;
+        v_data[this_id].optical_density = mat.optical_density;
     }
 
     // specular
     new_strength = s1.strength * mat.specular;
     if(length(new_strength) > GENERAL_THRESHOLD) {
         int index = atomic_inc(v_sizes + S2_SPECULAR_SIZE_OFFSET);
-        v_s2_specular[index].orig_id = s1.orig_id;
-//        v_s2_specular[index].depth = s1.depth;
-        v_s2_specular[index].new_strength = new_strength;
-        v_s2_specular[index].in_dir = s1.in_dir;
-        v_s2_specular[index].normal = normal;
-        v_s2_specular[index].intersect_p = intersect_p;
+        v_s2_specular[index] = this_id;
+        v_data[this_id].new_strength_specular = new_strength;
     }
 
     // diffuse
@@ -200,34 +197,28 @@ __kernel void s1_run(__global int * v_sizes,
     float new_strength_length = length(new_strength);
     if(new_strength_length > DIFFUSE_SAMPLE_THRESHOLD) {
         int index = atomic_inc(v_sizes + S2_DIFFUSE_SIZE_OFFSET);
-        v_s2_diffuse[index].orig_id = s1.orig_id;
-//        v_s2_diffuse[index].depth = s1.depth;
-        v_s2_diffuse[index].new_strength = new_strength;
-        v_s2_diffuse[index].in_dir = s1.in_dir;
-        v_s2_diffuse[index].normal = normal;
-        v_s2_diffuse[index].intersect_p = intersect_p;
+        v_s2_diffuse[index] = this_id;
+        v_data[this_id].new_strength_diffuse = new_strength;
     }
 
     // light, reuse diffuse strength
     new_strength /= convert_float(LIGHT_SAMPLE * DIFFUSE_SAMPLE);
     if(new_strength_length > LIGHT_SAMPLE_THRESHOLD) {
         int index = atomic_inc(v_sizes + S2_LIGHT_SIZE_OFFSET);
-        v_s2_light[index].orig_id = s1.orig_id;
-//        v_s2_light[index].depth = s1.depth;
-        v_s2_light[index].new_strength = new_strength;
-        v_s2_light[index].in_dir = s1.in_dir;
-        v_s2_light[index].normal = normal;
-        v_s2_light[index].intersect_p = intersect_p;
+        v_s2_light[index] = this_id;
+        v_data[this_id].new_strength_light = new_strength;
     }
 }
 
 __kernel void s2_refract_run(__global int * v_sizes,
-                             __global unit_S2_refract * v_s2_refract,
-                             __global unit_S0 * v_s0) {
+                             __global unit_data * v_data,
+                             __global int * v_s2_refract,
+                             __global int * v_s0) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S2_REFRACT_SIZE_OFFSET]) return;
 
-    unit_S2_refract s2 = v_s2_refract[global_id];
+    int this_id = v_s2_refract[global_id];
+    unit_data s2 = v_data[this_id];
 
     // compute refraction
     float cos_alpha = dot(s2.in_dir, -s2.normal);
@@ -243,20 +234,24 @@ __kernel void s2_refract_run(__global int * v_sizes,
                             sin_beta * q;
 
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
-    v_s0[index].orig_id = s2.orig_id;
-//    v_s0[index].depth = s2.depth + 1;
-    v_s0[index].strength = s2.new_strength;
-    v_s0[index].start_p = s2.intersect_p;
-    v_s0[index].in_dir = refraction_dir;
+    int new_id = atomic_inc(v_sizes + DATA_SIZE_OFFSET);
+    v_s0[index] = new_id;
+
+    v_data[new_id].orig_id = s2.orig_id;
+    v_data[new_id].strength = s2.new_strength_refract;
+    v_data[new_id].start_p = s2.intersect_p;
+    v_data[new_id].in_dir = refraction_dir;
 }
 
 __kernel void s2_specular_run(__global int * v_sizes,
-                              __global unit_S2_specular * v_s2_specular,
-                              __global unit_S0 * v_s0) {
+                              __global unit_data * v_data,
+                              __global int * v_s2_specular,
+                              __global int * v_s0) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S2_SPECULAR_SIZE_OFFSET]) return;
 
-    unit_S2_specular s2 = v_s2_specular[global_id];
+    int this_id = v_s2_specular[global_id];
+    unit_data s2 = v_data[this_id];
 
     // compute reflection
     float dot_ = dot(s2.in_dir, s2.normal);
@@ -264,21 +259,25 @@ __kernel void s2_specular_run(__global int * v_sizes,
     float3 reflection_dir = s2.in_dir - 2.0f * projection;
 
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
-    v_s0[index].orig_id = s2.orig_id;
-//    v_s0[index].depth = s2.depth + 1;
-    v_s0[index].strength = s2.new_strength;
-    v_s0[index].start_p = s2.intersect_p;
-    v_s0[index].in_dir = reflection_dir;
+    int new_id = atomic_inc(v_sizes + DATA_SIZE_OFFSET);
+    v_s0[index] = new_id;
+
+    v_data[new_id].orig_id = s2.orig_id;
+    v_data[new_id].strength = s2.new_strength_specular;
+    v_data[new_id].start_p = s2.intersect_p;
+    v_data[new_id].in_dir = reflection_dir;
 }
 
 __kernel void s2_diffuse_run(__global int * v_sizes,
-                             __global unit_S2_diffuse * v_s2_diffuse,
-                             __global unit_S0 * v_s0,
+                             __global unit_data * v_data,
+                             __global int * v_s2_diffuse,
+                             __global int * v_s0,
                              __global long * v_seed) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S2_DIFFUSE_SIZE_OFFSET]) return;
 
-    unit_S2_diffuse s2 = v_s2_diffuse[global_id];
+    int this_id = v_s2_diffuse[global_id];
+    unit_data s2 = v_data[this_id];
 
     bool dir = dot(s2.in_dir, s2.normal) < 0;
 
@@ -291,20 +290,24 @@ __kernel void s2_diffuse_run(__global int * v_sizes,
             dot_normal = -dot_normal;
             if(dir) p = -p;
         }
-        float3 strength = s2.new_strength * dot_normal / convert_float(DIFFUSE_SAMPLE);
+        float3 strength = s2.new_strength_diffuse * dot_normal / convert_float(DIFFUSE_SAMPLE);
+
         int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
-        v_s0[index].orig_id = s2.orig_id;
-//        v_s0[index].depth = s2.depth + 1;
-        v_s0[index].strength = strength;
-        v_s0[index].start_p = s2.intersect_p;
-        v_s0[index].in_dir = p;
+        int new_id = atomic_inc(v_sizes + DATA_SIZE_OFFSET);
+        v_s0[index] = new_id;
+
+        v_data[new_id].orig_id = s2.orig_id;
+        v_data[new_id].strength = strength;
+        v_data[new_id].start_p = s2.intersect_p;
+        v_data[new_id].in_dir = p;
     }
     v_seed[global_id] = rand_seed;
 }
 
 __kernel void s2_light_run(__global int * v_sizes,
-                           __global unit_S2_light * v_s2_light,
-                           __global unit_S0 * v_s0,
+                           __global unit_data * v_data,
+                           __global int * v_s2_light,
+                           __global int * v_s0,
                            __global int4 * v_lights,
                            const int v_lights_size,
                            __global float3 * scene_points,
@@ -312,7 +315,8 @@ __kernel void s2_light_run(__global int * v_sizes,
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S2_LIGHT_SIZE_OFFSET]) return;
 
-    unit_S2_light s2 = v_s2_light[global_id];
+    int this_id = v_s2_light[global_id];
+    unit_data s2 = v_data[this_id];
 
     bool dir = dot(s2.in_dir, s2.normal) < 0;
 
@@ -339,11 +343,13 @@ __kernel void s2_light_run(__global int * v_sizes,
         float dot_ = dot(p, s2.normal);
         if((dot_ > 0) == dir) {
             int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
-            v_s0[index].orig_id = s2.orig_id;
-//            v_s0[index].depth = s2.depth + 1;
-            v_s0[index].strength = s2.new_strength * fabs(dot_);
-            v_s0[index].start_p = s2.intersect_p;
-            v_s0[index].in_dir = p;
+            int new_id = atomic_inc(v_sizes + DATA_SIZE_OFFSET);
+
+            v_s0[index] = new_id;
+            v_data[new_id].orig_id = s2.orig_id;
+            v_data[new_id].strength = s2.new_strength_light * fabs(dot_);
+            v_data[new_id].start_p = s2.intersect_p;
+            v_data[new_id].in_dir = p;
         }
     }
     v_seed[global_id] = rand_seed;
