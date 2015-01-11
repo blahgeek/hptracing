@@ -131,7 +131,7 @@ __kernel void naive_intersect(__global int * v_sizes,
     if(geo_id != -1) {
         int index = atomic_inc(v_sizes + S1_SIZE_OFFSET);
         v_s1[index].orig_id = s0.orig_id;
-        v_s1[index].depth = s0.depth;
+//        v_s1[index].depth = s0.depth;
         v_s1[index].strength = s0.strength;
         v_s1[index].geometry = scene_mesh[geo_id];
         v_s1[index].start_p = s0.start_p;
@@ -169,14 +169,13 @@ __kernel void s1_run(__global int * v_sizes,
     atomic_add_global(target, result.x);
     atomic_add_global(target+1, result.y);
     atomic_add_global(target+2, result.z);
-//    v_result[s1.orig_id*3+1] = 255.0 * result.y;
 
     // refract
     float3 new_strength = s1.strength * (1.0f - mat.dissolve);
     if(length(new_strength) > GENERAL_THRESHOLD) {
         int index = atomic_inc(v_sizes + S2_REFRACT_SIZE_OFFSET);
         v_s2_refract[index].orig_id = s1.orig_id;
-        v_s2_refract[index].depth = s1.depth;
+//        v_s2_refract[index].depth = s1.depth;
         v_s2_refract[index].new_strength = new_strength;
         v_s2_refract[index].in_dir = s1.in_dir;
         v_s2_refract[index].normal = normal;
@@ -189,7 +188,7 @@ __kernel void s1_run(__global int * v_sizes,
     if(length(new_strength) > GENERAL_THRESHOLD) {
         int index = atomic_inc(v_sizes + S2_SPECULAR_SIZE_OFFSET);
         v_s2_specular[index].orig_id = s1.orig_id;
-        v_s2_specular[index].depth = s1.depth;
+//        v_s2_specular[index].depth = s1.depth;
         v_s2_specular[index].new_strength = new_strength;
         v_s2_specular[index].in_dir = s1.in_dir;
         v_s2_specular[index].normal = normal;
@@ -202,7 +201,7 @@ __kernel void s1_run(__global int * v_sizes,
     if(new_strength_length > DIFFUSE_SAMPLE_THRESHOLD) {
         int index = atomic_inc(v_sizes + S2_DIFFUSE_SIZE_OFFSET);
         v_s2_diffuse[index].orig_id = s1.orig_id;
-        v_s2_diffuse[index].depth = s1.depth;
+//        v_s2_diffuse[index].depth = s1.depth;
         v_s2_diffuse[index].new_strength = new_strength;
         v_s2_diffuse[index].in_dir = s1.in_dir;
         v_s2_diffuse[index].normal = normal;
@@ -214,7 +213,7 @@ __kernel void s1_run(__global int * v_sizes,
     if(new_strength_length > LIGHT_SAMPLE_THRESHOLD) {
         int index = atomic_inc(v_sizes + S2_LIGHT_SIZE_OFFSET);
         v_s2_light[index].orig_id = s1.orig_id;
-        v_s2_light[index].depth = s1.depth;
+//        v_s2_light[index].depth = s1.depth;
         v_s2_light[index].new_strength = new_strength;
         v_s2_light[index].in_dir = s1.in_dir;
         v_s2_light[index].normal = normal;
@@ -245,7 +244,7 @@ __kernel void s2_refract_run(__global int * v_sizes,
 
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
     v_s0[index].orig_id = s2.orig_id;
-    v_s0[index].depth = s2.depth + 1;
+//    v_s0[index].depth = s2.depth + 1;
     v_s0[index].strength = s2.new_strength;
     v_s0[index].start_p = s2.intersect_p;
     v_s0[index].in_dir = refraction_dir;
@@ -266,7 +265,7 @@ __kernel void s2_specular_run(__global int * v_sizes,
 
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
     v_s0[index].orig_id = s2.orig_id;
-    v_s0[index].depth = s2.depth + 1;
+//    v_s0[index].depth = s2.depth + 1;
     v_s0[index].strength = s2.new_strength;
     v_s0[index].start_p = s2.intersect_p;
     v_s0[index].in_dir = reflection_dir;
@@ -295,7 +294,7 @@ __kernel void s2_diffuse_run(__global int * v_sizes,
         float3 strength = s2.new_strength * dot_normal / convert_float(DIFFUSE_SAMPLE);
         int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
         v_s0[index].orig_id = s2.orig_id;
-        v_s0[index].depth = s2.depth + 1;
+//        v_s0[index].depth = s2.depth + 1;
         v_s0[index].strength = strength;
         v_s0[index].start_p = s2.intersect_p;
         v_s0[index].in_dir = p;
@@ -335,14 +334,13 @@ __kernel void s2_light_run(__global int * v_sizes,
             randy = 1 - randy;
         }
         float3 point = pa + randx * (pb - pa) + randy * (pc - pa);
-//        float3 point = pa;
         float3 p = normalize(point - s2.intersect_p);
 
         float dot_ = dot(p, s2.normal);
         if((dot_ > 0) == dir) {
             int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
             v_s0[index].orig_id = s2.orig_id;
-            v_s0[index].depth = s2.depth + 1;
+//            v_s0[index].depth = s2.depth + 1;
             v_s0[index].strength = s2.new_strength * fabs(dot_);
             v_s0[index].start_p = s2.intersect_p;
             v_s0[index].in_dir = p;

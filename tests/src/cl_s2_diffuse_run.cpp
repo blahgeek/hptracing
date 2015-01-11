@@ -45,7 +45,7 @@ TEST(CLTest, s2_diffuse_run) {
 
     cl::unit_S2_diffuse unit;
     unit.orig_id = 0;
-    unit.depth = 0;
+    // unit.depth = 0;
     ASSIGN_F3(unit.new_strength, Vec(1,1,1));
     // (191.123154 548.799988 235.960510) -> (0.337651 -0.731054 0.592918)
     ASSIGN_F3(unit.in_dir, Vec(0.337651, -0.731054, 0.592918));

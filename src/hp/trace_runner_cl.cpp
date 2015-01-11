@@ -20,7 +20,7 @@ void cl::TraceRunner::run() {
     for(size_t i = 0 ; i < view_dir.size() ; i += 1) {
         cl::unit_S0 x;
         x.orig_id = i;
-        x.depth = 0;
+        // x.depth = 0;
         x.strength.s[0] = x.strength.s[1] = x.strength.s[2] = 1;
         x.strength.s[3] = 0;
         x.start_p = view_p;
@@ -103,21 +103,6 @@ void cl::TraceRunner::run() {
             hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5]);
             cl_program->writeBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
             clReleaseKernel(kernel);
-
-            // // test
-            // if(i == 1) {
-            //     cl_program->readBuffer(s1_mem, sizeof(cl::unit_S1) * 100000, test_s1);
-            //     for(int i = 0 ; i < v_sizes[1] ; i += 1) {
-            //         auto s1 = test_s1[i];
-            //         if(s1.start_p.s[1] > 500 && s1.geometry.s[3] == 5) { // ceiling -> light
-            //             hp_log("(%f %f %f) -> (%f %f %f) : %f, strenth(%f %f %f)",
-            //                    s1.start_p.s[0], s1.start_p.s[1], s1.start_p.s[2],
-            //                    s1.in_dir.s[0], s1.in_dir.s[1], s1.in_dir.s[2],
-            //                    s1.intersect_number,
-            //                    s1.strength.s[0], s1.strength.s[1], s1.strength.s[2]);
-            //         }
-            //     }
-            // }
 
             // run S1
             kernel = cl_program->getKernel("s1_run");

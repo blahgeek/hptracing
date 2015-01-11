@@ -54,7 +54,7 @@ TEST(CLTest, s1_run) {
 
     cl::unit_S1 unit;
     unit.orig_id = 0;
-    unit.depth = 0;
+    // unit.depth = 0;
     unit.strength.s[0] = unit.strength.s[1] = unit.strength.s[2] = 1;
     unit.geometry.s[0] = 20;
     unit.geometry.s[1] = 21;

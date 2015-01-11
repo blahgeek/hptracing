@@ -44,7 +44,7 @@ TEST(CLTest, naive_intersect) {
             hp::Vec p(i - 500, j - 500, 500); p.normalize();
             int index = i * 1000 + j;
             v_s0[index].orig_id = index;
-            v_s0[index].depth = 0;
+            // v_s0[index].depth = 0;
             v_s0[index].strength.s[0] = 1;
             v_s0[index].strength.s[1] = 1;
             v_s0[index].strength.s[2] = 1;
@@ -123,7 +123,7 @@ TEST(CLTest, intersect2) {
 
     cl::unit_S0 unit;
     unit.orig_id = 0;
-    unit.depth = 0;
+    // unit.depth = 0;
     unit.strength.s[0] = unit.strength.s[1] = unit.strength.s[2] = 1;
     unit.start_p.s[0] = 47.870575; unit.start_p.s[1] = 548.800049; unit.start_p.s[2] = 232.352966;
     unit.in_dir.s[0] = -0.228340; unit.in_dir.s[1] = -0.747359; unit.in_dir.s[2] = 0.623952;
