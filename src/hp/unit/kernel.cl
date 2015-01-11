@@ -116,9 +116,7 @@ __kernel void naive_intersect(__global int * v_sizes,
     float intersect_number = -42;
     int4 triangle;
     for(int i = 0 ; i < scene_mesh_size ; i += 1) {
-        // debug
         triangle = scene_mesh[i];
-//        if(!(triangle.w == 5 && triangle.x == 12)) continue;
         float result = _single_intersect(s0.start_p, s0.in_dir,
                                          scene_points[triangle.x], 
                                          scene_points[triangle.y],
@@ -212,7 +210,7 @@ __kernel void s1_run(__global int * v_sizes,
     }
 
     // light, reuse diffuse strength
-    new_strength /= (LIGHT_SAMPLE * DIFFUSE_SAMPLE);
+    new_strength /= convert_float(LIGHT_SAMPLE * DIFFUSE_SAMPLE);
     if(new_strength_length > LIGHT_SAMPLE_THRESHOLD) {
         int index = atomic_inc(v_sizes + S2_LIGHT_SIZE_OFFSET);
         v_s2_light[index].orig_id = s1.orig_id;
@@ -336,7 +334,9 @@ __kernel void s2_light_run(__global int * v_sizes,
             randx = 1 - randx;
             randy = 1 - randy;
         }
-        float3 p = pa + randx * (pb - pa) + randy * (pc - pa);
+        float3 point = pa + randx * (pb - pa) + randy * (pc - pa);
+//        float3 point = pa;
+        float3 p = normalize(point - s2.intersect_p);
 
         float dot_ = dot(p, s2.normal);
         if((dot_ > 0) == dir) {

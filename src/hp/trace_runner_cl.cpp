@@ -65,7 +65,7 @@ void cl::TraceRunner::run() {
     cl_mem s2_light_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
                                                    sizeof(cl::unit_S2_light) * 100000, nullptr);
 
-#define RAY_PER_LOOP 5000
+#define RAY_PER_LOOP 1000
     // Random seeds
     cl_long * random_seeds = new cl_long[500000];
     for(int i = 0 ; i < 500000 ; i += 1)
@@ -162,17 +162,17 @@ void cl::TraceRunner::run() {
             clSetKernelArg(kernel_diffuse, 3, sizeof(cl_mem), &rand_seed_mem);
             global = (v_sizes[4] / local + 1) * local;
             clEnqueueNDRangeKernel(cl_program->commands, kernel_diffuse, 1, NULL, &global, &local, 0, NULL, NULL);
-            // // run S2 light 
-            // auto kernel_light = cl_program->getKernel("s2_light_run");
-            // clSetKernelArg(kernel_light, 0, sizeof(cl_mem), &v_sizes_mem);
-            // clSetKernelArg(kernel_light, 1, sizeof(cl_mem), &s2_light_mem);
-            // clSetKernelArg(kernel_light, 2, sizeof(cl_mem), &s0_mem);
-            // clSetKernelArg(kernel_light, 3, sizeof(cl_mem), &lights_mem);
-            // clSetKernelArg(kernel_light, 4, sizeof(cl_int), &lights_size);
-            // clSetKernelArg(kernel_light, 5, sizeof(cl_mem), &points_mem);
-            // clSetKernelArg(kernel_light, 6, sizeof(cl_mem), &rand_seed_mem);
-            // global = (v_sizes[5] / local + 1) * local;
-            // clEnqueueNDRangeKernel(cl_program->commands, kernel_light, 1, NULL, &global, &local, 0, NULL, NULL);
+            // run S2 light 
+            auto kernel_light = cl_program->getKernel("s2_light_run");
+            clSetKernelArg(kernel_light, 0, sizeof(cl_mem), &v_sizes_mem);
+            clSetKernelArg(kernel_light, 1, sizeof(cl_mem), &s2_light_mem);
+            clSetKernelArg(kernel_light, 2, sizeof(cl_mem), &s0_mem);
+            clSetKernelArg(kernel_light, 3, sizeof(cl_mem), &lights_mem);
+            clSetKernelArg(kernel_light, 4, sizeof(cl_int), &lights_size);
+            clSetKernelArg(kernel_light, 5, sizeof(cl_mem), &points_mem);
+            clSetKernelArg(kernel_light, 6, sizeof(cl_mem), &rand_seed_mem);
+            global = (v_sizes[5] / local + 1) * local;
+            clEnqueueNDRangeKernel(cl_program->commands, kernel_light, 1, NULL, &global, &local, 0, NULL, NULL);
             // finish S2
             clFinish(cl_program->commands);
             cl_program->readBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
@@ -182,7 +182,7 @@ void cl::TraceRunner::run() {
             clReleaseKernel(kernel_refract);
             clReleaseKernel(kernel_specular);
             clReleaseKernel(kernel_diffuse);
-            // clReleaseKernel(kernel_light);
+            clReleaseKernel(kernel_light);
         }
     }
 
