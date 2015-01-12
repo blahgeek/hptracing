@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-11
+* @Last Modified time: 2015-01-12
 */
 
 #include <iostream>
@@ -10,8 +10,15 @@
 #include <cstdlib>
 #include <algorithm>
 #include <ctime>
+#include <sys/time.h>
 
 using namespace hp;
+
+uint64_t GetTimeStamp() {
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    return tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
+}
 
 void cl::TraceRunner::run() {
     std::srand(std::time(0));
@@ -68,7 +75,7 @@ void cl::TraceRunner::run() {
     cl_mem s2_light_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
                                                    sizeof(cl_int) * 100000, nullptr);
 
-#define RAY_PER_LOOP 3000
+#define RAY_PER_LOOP 400
     // Random seeds
     cl_long * random_seeds = new cl_long[500000];
     for(int i = 0 ; i < 500000 ; i += 1)
@@ -77,6 +84,10 @@ void cl::TraceRunner::run() {
                                                     sizeof(cl_long) * 500000, random_seeds);
 
     int max_data = -1;
+
+    uint64_t s0_time = 0;
+    uint64_t s1_time = 0;
+    uint64_t s2_time = 0;
 
     for(size_t ii = 0 ; ii < s0_all.size() ; ii += RAY_PER_LOOP) {
         cl_int v_sizes[10] = {0};
@@ -92,8 +103,10 @@ void cl::TraceRunner::run() {
         cl_program->writeBuffer(s0_mem, sizeof(intial_s0), intial_s0);
 
         for(int i = 0 ; i < 4 ; i += 1) {
-            hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
-            size_t global = 0, local = 200;
+            // hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
+            size_t global = 0, local = 512;
+
+            auto t0 = GetTimeStamp();
 
             // run S0
             auto kernel = cl_program->getKernel("naive_intersect");
@@ -105,14 +118,17 @@ void cl::TraceRunner::run() {
             clSetKernelArg(kernel, 5, sizeof(cl_mem), &geometries_mem);
             clSetKernelArg(kernel, 6, sizeof(cl_int), &geometries_size);
 
-            global = (v_sizes[0] / local + 1) * local;
-            clEnqueueNDRangeKernel(cl_program->commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
+            // global = (v_sizes[0] / local + 1) * local;
+            cl_program->enqueueNDKernel(kernel, v_sizes[0]);
+            // clEnqueueNDRangeKernel(cl_program->commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
             clFinish(cl_program->commands);
             cl_program->readBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
             v_sizes[0] = 0;
-            hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
+            // hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
             cl_program->writeBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
             clReleaseKernel(kernel);
+
+            auto t1 = GetTimeStamp();
 
             // run S1
             kernel = cl_program->getKernel("s1_run");
@@ -127,15 +143,18 @@ void cl::TraceRunner::run() {
             clSetKernelArg(kernel, 8, sizeof(cl_mem), &points_mem);
             clSetKernelArg(kernel, 9, sizeof(cl_mem), &materials_mem);
 
-            global = (v_sizes[1] / local + 1) * local;
-            clEnqueueNDRangeKernel(cl_program->commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
+            // global = (v_sizes[1] / local + 1) * local;
+            cl_program->enqueueNDKernel(kernel, v_sizes[1]);
+            // clEnqueueNDRangeKernel(cl_program->commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
             clFinish(cl_program->commands);
             cl_program->readBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
             v_sizes[1] = 0;
             v_sizes[6] = (i % 2 == 0) ? (UNIT_DATA_SIZE / 2) : 0;
-            hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
+            // hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
             cl_program->writeBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
             clReleaseKernel(kernel);
+
+            auto t2 = GetTimeStamp();
 
             // run S2 refract
             auto kernel_refract = cl_program->getKernel("s2_refract_run");
@@ -143,16 +162,18 @@ void cl::TraceRunner::run() {
             clSetKernelArg(kernel_refract, 1, sizeof(cl_mem), &v_data_mem);
             clSetKernelArg(kernel_refract, 2, sizeof(cl_mem), &s2_refract_mem);
             clSetKernelArg(kernel_refract, 3, sizeof(cl_mem), &s0_mem);
-            global = (v_sizes[2] / local + 1) * local;
-            clEnqueueNDRangeKernel(cl_program->commands, kernel_refract, 1, NULL, &global, &local, 0, NULL, NULL);
+            // global = (v_sizes[2] / local + 1) * local;
+            cl_program->enqueueNDKernel(kernel_refract, v_sizes[2]);
+            // clEnqueueNDRangeKernel(cl_program->commands, kernel_refract, 1, NULL, &global, &local, 0, NULL, NULL);
             // run S2 specular
             auto kernel_specular = cl_program->getKernel("s2_specular_run");
             clSetKernelArg(kernel_specular, 0, sizeof(cl_mem), &v_sizes_mem);
             clSetKernelArg(kernel_specular, 1, sizeof(cl_mem), &v_data_mem);
             clSetKernelArg(kernel_specular, 2, sizeof(cl_mem), &s2_specular_mem);
             clSetKernelArg(kernel_specular, 3, sizeof(cl_mem), &s0_mem);
-            global = (v_sizes[3] / local + 1) * local;
-            clEnqueueNDRangeKernel(cl_program->commands, kernel_specular, 1, NULL, &global, &local, 0, NULL, NULL);
+            // global = (v_sizes[3] / local + 1) * local;
+            cl_program->enqueueNDKernel(kernel_specular, v_sizes[3]);
+            // clEnqueueNDRangeKernel(cl_program->commands, kernel_specular, 1, NULL, &global, &local, 0, NULL, NULL);
             // run S2 diffuse 
             auto kernel_diffuse = cl_program->getKernel("s2_diffuse_run");
             clSetKernelArg(kernel_diffuse, 0, sizeof(cl_mem), &v_sizes_mem);
@@ -160,8 +181,9 @@ void cl::TraceRunner::run() {
             clSetKernelArg(kernel_diffuse, 2, sizeof(cl_mem), &s2_diffuse_mem);
             clSetKernelArg(kernel_diffuse, 3, sizeof(cl_mem), &s0_mem);
             clSetKernelArg(kernel_diffuse, 4, sizeof(cl_mem), &rand_seed_mem);
-            global = (v_sizes[4] / local + 1) * local;
-            clEnqueueNDRangeKernel(cl_program->commands, kernel_diffuse, 1, NULL, &global, &local, 0, NULL, NULL);
+            // global = (v_sizes[4] / local + 1) * local;
+            cl_program->enqueueNDKernel(kernel_diffuse, v_sizes[4]);
+            // clEnqueueNDRangeKernel(cl_program->commands, kernel_diffuse, 1, NULL, &global, &local, 0, NULL, NULL);
             // run S2 light 
             auto kernel_light = cl_program->getKernel("s2_light_run");
             clSetKernelArg(kernel_light, 0, sizeof(cl_mem), &v_sizes_mem);
@@ -172,19 +194,26 @@ void cl::TraceRunner::run() {
             clSetKernelArg(kernel_light, 5, sizeof(cl_int), &lights_size);
             clSetKernelArg(kernel_light, 6, sizeof(cl_mem), &points_mem);
             clSetKernelArg(kernel_light, 7, sizeof(cl_mem), &rand_seed_mem);
-            global = (v_sizes[5] / local + 1) * local;
-            clEnqueueNDRangeKernel(cl_program->commands, kernel_light, 1, NULL, &global, &local, 0, NULL, NULL);
+            // global = (v_sizes[5] / local + 1) * local;
+            cl_program->enqueueNDKernel(kernel_light, v_sizes[5]);
+            // clEnqueueNDRangeKernel(cl_program->commands, kernel_light, 1, NULL, &global, &local, 0, NULL, NULL);
             // finish S2
             clFinish(cl_program->commands);
             cl_program->readBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
             v_sizes[2] = v_sizes[3] = v_sizes[4] = v_sizes[5] = 0;
             cl_program->writeBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
 
-            hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
+            auto t3 = GetTimeStamp();
+
+            // hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
             clReleaseKernel(kernel_refract);
             clReleaseKernel(kernel_specular);
             clReleaseKernel(kernel_diffuse);
             clReleaseKernel(kernel_light);
+
+            s0_time += t1 - t0;
+            s1_time += t2 - t1;
+            s2_time += t3 - t2;
 
             auto tmp = v_sizes[6] - ((i % 2 == 0) ? (UNIT_DATA_SIZE / 2) : 0);
             if(tmp > max_data) max_data = tmp;
@@ -192,6 +221,7 @@ void cl::TraceRunner::run() {
     }
 
     hp_log("Max data: %d", max_data);
+    hp_log("Time: s0 %ld, s1 %ld, s2 %ld", s0_time, s1_time, s2_time);
 
     result.resize(view_dir.size() * 3, 0);
     cl_program->readBuffer(results_mem, sizeof(cl_float) * view_dir.size() * 3, result.data());

@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-10
+* @Last Modified time: 2015-01-12
 */
 
 #ifndef __hp_cl_program_h__
@@ -23,6 +23,7 @@ public:
     cl_mem createBuffer(cl_mem_flags flags, size_t len, void * host_p);
     void readBuffer(cl_mem buffer, size_t len, void * p);
     void writeBuffer(cl_mem buffer, size_t len, void * p);
+    void enqueueNDKernel(cl_kernel & kernel, size_t size);
     CLProgram();
     ~CLProgram();
 

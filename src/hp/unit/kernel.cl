@@ -42,7 +42,7 @@ inline float3 randf3(long * seed) {
     return normalize(ret);
 }
 
-#define DIFFICULTY 1
+#define DIFFICULTY 3
 
 #define DIFFUSE_SAMPLE (16 * DIFFICULTY)
 #define LIGHT_SAMPLE (2 * DIFFICULTY)
@@ -202,7 +202,7 @@ __kernel void s1_run(__global int * v_sizes,
     }
 
     // light, reuse diffuse strength
-    new_strength /= convert_float(LIGHT_SAMPLE * DIFFUSE_SAMPLE);
+    new_strength /= convert_float(DIFFUSE_SAMPLE);
     if(new_strength_length > LIGHT_SAMPLE_THRESHOLD) {
         int index = atomic_inc(v_sizes + S2_LIGHT_SIZE_OFFSET);
         v_s2_light[index] = this_id;

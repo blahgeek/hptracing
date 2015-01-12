@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-11
+* @Last Modified time: 2015-01-12
 */
 
 #include "./cl_program.h"
@@ -15,6 +15,19 @@ static std::string read_file(std::string filename) {
     std::string str((std::istreambuf_iterator<char>(t)),
                     std::istreambuf_iterator<char>());
     return str;
+}
+
+void hp::CLProgram::enqueueNDKernel(cl_kernel & kernel, size_t size) {
+    if(size == 0) return;
+
+    size_t local = 256;
+    // auto err = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
+    // hp_assert(err == CL_SUCCESS);
+
+    // hp_log("Enqueue ND Kernel: size = %lu, local = %lu", size, local);
+
+    size_t global = (size / local + 1) * local;
+    clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
 }
 
 hp::CLProgram::CLProgram() {
