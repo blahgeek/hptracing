@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-11
+* @Last Modified time: 2015-01-12
 */
 
 #ifndef __hp_unit_types_h__
@@ -26,10 +26,10 @@ typedef struct {
     cl_float3 intersect_p, normal;
     cl_float optical_density;
 
-    cl_float3 new_strength_refract;
-    cl_float3 new_strength_specular;
-    cl_float3 new_strength_diffuse;
-    cl_float3 new_strength_light;
+    // cl_float3 new_strength_refract;
+    // cl_float3 new_strength_specular;
+    // cl_float3 new_strength_diffuse;
+    // cl_float3 new_strength_light;
 } unit_data;
 
 typedef struct {

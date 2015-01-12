@@ -34,7 +34,7 @@ void cl::TraceRunner::run() {
         s0_all.push_back(x);
     }
     // Aha! magic!
-    std::random_shuffle(s0_all.begin(), s0_all.end());
+    // std::random_shuffle(s0_all.begin(), s0_all.end());
 
     // Scene related data, readonly
     cl_mem points_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
@@ -60,29 +60,29 @@ void cl::TraceRunner::run() {
     cl_mem v_sizes_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
                                                   sizeof(cl_int) * 10, nullptr);
 
-    #define UNIT_DATA_SIZE 1000000
+    // #define UNIT_DATA_SIZE 1000000
     cl_mem v_data_mem = cl_program->createBuffer(CL_MEM_READ_WRITE, 
-                                                 sizeof(cl::unit_data) * UNIT_DATA_SIZE, nullptr);
+                                                 sizeof(cl::unit_data) * view_dir.size(), nullptr);
     cl_mem s0_mem = cl_program->createBuffer(CL_MEM_READ_WRITE, 
-                                             sizeof(cl_int) * 500000, nullptr);
+                                             sizeof(cl_int) * view_dir.size(), nullptr);
     cl_mem s1_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
-                                             sizeof(cl_int) * 500000, nullptr);
+                                             sizeof(cl_int) * view_dir.size(), nullptr);
     cl_mem s2_refract_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
-                                                     sizeof(cl_int) * 500000, nullptr);
+                                                     sizeof(cl_int) * view_dir.size(), nullptr);
     cl_mem s2_specular_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
-                                                     sizeof(cl_int) * 500000, nullptr);
+                                                     sizeof(cl_int) * view_dir.size(), nullptr);
     cl_mem s2_diffuse_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
-                                                     sizeof(cl_int) * 500000, nullptr);
+                                                     sizeof(cl_int) * view_dir.size(), nullptr);
     cl_mem s2_light_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
-                                                   sizeof(cl_int) * 500000, nullptr);
+                                                   sizeof(cl_int) * view_dir.size(), nullptr);
 
-#define RAY_PER_LOOP 200
+#define SAMPLES 50
     // Random seeds
-    cl_long * random_seeds = new cl_long[500000];
-    for(int i = 0 ; i < 500000 ; i += 1)
+    cl_long * random_seeds = new cl_long[view_dir.size()];
+    for(int i = 0 ; i < view_dir.size() ; i += 1)
         random_seeds[i] = rand();
     cl_mem rand_seed_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
-                                                    sizeof(cl_long) * 500000, random_seeds);
+                                                    sizeof(cl_long) * view_dir.size(), random_seeds);
 
     int max_data = -1;
     int max_sizes[10] = {0};
@@ -91,22 +91,22 @@ void cl::TraceRunner::run() {
     uint64_t s1_time = 0;
     uint64_t s2_time = 0;
 
-    for(size_t ii = 0 ; ii < s0_all.size() ; ii += RAY_PER_LOOP) {
+    cl_int * intial_s0 = new cl_int[view_dir.size()];
+    for(int i = 0 ; i < view_dir.size() ; i += 1)
+        intial_s0[i] = i;
+
+    for(size_t ii = 0 ; ii < SAMPLES ; ii += 1) {
         cl_int v_sizes[10] = {0};
-        v_sizes[0] = std::min(RAY_PER_LOOP, int(s0_all.size() - ii));
+        v_sizes[0] = view_dir.size();
         cl_program->writeBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
         cl_program->writeBuffer(v_data_mem, 
-                                sizeof(cl::unit_data) * v_sizes[0], 
-                                &(s0_all[ii]));
+                                sizeof(cl::unit_data) * s0_all.size(), 
+                                s0_all.data());
 
-        cl_int intial_s0[RAY_PER_LOOP];
-        for(int i = 0 ; i < RAY_PER_LOOP ; i += 1)
-            intial_s0[i] = i;
-        cl_program->writeBuffer(s0_mem, sizeof(intial_s0), intial_s0);
+        cl_program->writeBuffer(s0_mem, sizeof(cl_int) * view_dir.size(), intial_s0);
 
         for(int i = 0 ; i < 4 ; i += 1) {
-            // hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
-            size_t global = 0, local = 512;
+            hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
 
             auto t0 = GetTimeStamp();
 
@@ -127,7 +127,7 @@ void cl::TraceRunner::run() {
             cl_program->readBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
             if(v_sizes[0] > max_sizes[0]) max_sizes[0] = v_sizes[0];
             v_sizes[0] = 0;
-            // hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
+            hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
             cl_program->writeBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
             clReleaseKernel(kernel);
 
@@ -145,6 +145,7 @@ void cl::TraceRunner::run() {
             clSetKernelArg(kernel, 7, sizeof(cl_mem), &s2_light_mem);
             clSetKernelArg(kernel, 8, sizeof(cl_mem), &points_mem);
             clSetKernelArg(kernel, 9, sizeof(cl_mem), &materials_mem);
+            clSetKernelArg(kernel, 10, sizeof(cl_mem), &rand_seed_mem);
 
             // global = (v_sizes[1] / local + 1) * local;
             cl_program->enqueueNDKernel(kernel, v_sizes[1]);
@@ -153,8 +154,8 @@ void cl::TraceRunner::run() {
             cl_program->readBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
             if(v_sizes[1] > max_sizes[1]) max_sizes[1] = v_sizes[1];
             v_sizes[1] = 0;
-            v_sizes[6] = (i % 2 == 0) ? (UNIT_DATA_SIZE / 2) : 0;
-            // hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
+            // v_sizes[6] = (i % 2 == 0) ? (UNIT_DATA_SIZE / 2) : 0;
+            hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
             cl_program->writeBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
             clReleaseKernel(kernel);
 
@@ -213,7 +214,7 @@ void cl::TraceRunner::run() {
 
             auto t3 = GetTimeStamp();
 
-            // hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
+            hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
             clReleaseKernel(kernel_refract);
             clReleaseKernel(kernel_specular);
             clReleaseKernel(kernel_diffuse);
@@ -223,12 +224,12 @@ void cl::TraceRunner::run() {
             s1_time += t2 - t1;
             s2_time += t3 - t2;
 
-            auto tmp = v_sizes[6] - ((i % 2 == 0) ? (UNIT_DATA_SIZE / 2) : 0);
-            if(tmp > max_data) max_data = tmp;
+            // auto tmp = v_sizes[6] - ((i % 2 == 0) ? (UNIT_DATA_SIZE / 2) : 0);
+            // if(tmp > max_data) max_data = tmp;
         }
     }
 
-    hp_log("Max data: %d", max_data);
+    // hp_log("Max data: %d", max_data);
     hp_log("Max sx size: %d %d %d %d %d %d", 
            max_sizes[0], max_sizes[1], max_sizes[2], max_sizes[3],
            max_sizes[4], max_sizes[5]);
@@ -236,4 +237,7 @@ void cl::TraceRunner::run() {
 
     result.resize(view_dir.size() * 3, 0);
     cl_program->readBuffer(results_mem, sizeof(cl_float) * view_dir.size() * 3, result.data());
+
+    for(int i = 0 ; i < result.size() ; i += 1)
+        result[i] /= float(SAMPLES);
 }
