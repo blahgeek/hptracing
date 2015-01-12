@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-07
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-11
+* @Last Modified time: 2015-01-12
 */
 
 #include <iostream>
@@ -30,9 +30,9 @@ TEST(CLRunner, run) {
     ASSIGN_F3(view_p, _view_p);
     std::vector<cl_float3> view_dir;
     // std::vector<Vec> view_dir;
-    for(int i = 0 ; i < 500 ; i += 1) {
-        for(int j = 0 ; j < 500 ; j += 1) {
-            Vec dir = Vec(i, j, 0) - _view_p;
+    for(int i = 0 ; i < 1000 ; i += 1) {
+        for(int j = 0 ; j < 1000 ; j += 1) {
+            Vec dir = Vec(float(i)/2, float(j)/2, 0) - _view_p;
             dir.normalize();
             cl_float3 x;
             ASSIGN_F3(x, dir);
@@ -51,7 +51,11 @@ TEST(CLRunner, run) {
     for(int y = 500 - 1 ; y >= 0 ; y --) {
         for(int x = 0 ; x < 500 ; x ++) {
             for(int k = 0 ; k < 3 ; k += 1) {
-                auto val = runner->result[(x * 500 + y) * 3 + k];
+                auto val = runner->result[((x*2) * 1000 + (y*2)) * 3 + k];
+                val += runner->result[((x*2+1) * 1000 + (y*2)) * 3 + k];
+                val += runner->result[((x*2) * 1000 + (y*2+1)) * 3 + k];
+                val += runner->result[((x*2+1) * 1000 + (y*2+1)) * 3 + k];
+                val /= 4;
                 fout << int(255 * (1.0 - std::exp(-val))) << " ";
             }
         }

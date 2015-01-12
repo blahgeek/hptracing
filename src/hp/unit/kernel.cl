@@ -42,20 +42,44 @@ inline float3 randf3(long * seed) {
     return normalize(ret);
 }
 
-#define DIFFICULTY 3
+#define DIFFICULTY 7
 
 #define DIFFUSE_SAMPLE (16 * DIFFICULTY)
 #define LIGHT_SAMPLE (2 * DIFFICULTY)
 
-#define GENERAL_THRESHOLD (5e-3f / float(DIFFICULTY))
+#define DIFFUSE_SAMPLE_DIV (2 * DIFFICULTY)
 
-#define LIGHT_SAMPLE_THRESHOLD (1.0f / DIFFUSE_SAMPLE / 2.0f)
-#define DIFFUSE_SAMPLE_THRESHOLD (1.0f / DIFFUSE_SAMPLE * 1.5f)
+#define GENERAL_THRESHOLD (5e-3f / convert_float(DIFFICULTY))
+
+#define LIGHT_SAMPLE_THRESHOLD (1.0f / DIFFUSE_SAMPLE_DIV / 2.0f)
+#define DIFFUSE_SAMPLE_THRESHOLD (1.0f / DIFFUSE_SAMPLE_DIV * 1.5f)
 
 float _single_intersect(float3 _start_p, float3 in_dir,
                         float3 pa, float3 pb, float3 pc) {
     float3 start_p = _start_p + 0.5f * in_dir;
 
+//    #define EPSILON 1e-3f
+//
+//    float3 e1 = pb - pa;
+//    float3 e2 = pc - pa;
+//    float3 P = cross(in_dir, e2);
+//    float det = dot(e1, P);
+//    if(det > EPSILON && det < EPSILON) return -1;
+//
+//    float inv_det = 1.f / det;
+//    float3 T = start_p - pa;
+//    float u = dot(T, P) * inv_det;
+//    if(u < 0.f || u > 1.f) return -1;
+//
+//    float3 Q = cross(T, e1);
+//    float v = dot(in_dir, Q) * inv_det;
+//    if(v < 0.f || u + v  > 1.f) return -1;
+//
+//    float t = dot(e2, Q) * inv_det;
+//    if(t > 0.5) return t;
+//
+//    return -1;
+//
     float3 a = in_dir;
     float3 b = pa - pb;
     float3 c = pa - pc;
@@ -201,13 +225,13 @@ __kernel void s1_run(__global int * v_sizes,
         v_data[this_id].new_strength_diffuse = new_strength;
     }
 
-    // light, reuse diffuse strength
-    new_strength /= convert_float(DIFFUSE_SAMPLE);
-    if(new_strength_length > LIGHT_SAMPLE_THRESHOLD) {
-        int index = atomic_inc(v_sizes + S2_LIGHT_SIZE_OFFSET);
-        v_s2_light[index] = this_id;
-        v_data[this_id].new_strength_light = new_strength;
-    }
+//    // light, reuse diffuse strength
+//    new_strength /= convert_float(DIFFUSE_SAMPLE);
+//    if(new_strength_length > LIGHT_SAMPLE_THRESHOLD) {
+//        int index = atomic_inc(v_sizes + S2_LIGHT_SIZE_OFFSET);
+//        v_s2_light[index] = this_id;
+//        v_data[this_id].new_strength_light = new_strength;
+//    }
 }
 
 __kernel void s2_refract_run(__global int * v_sizes,
@@ -290,7 +314,8 @@ __kernel void s2_diffuse_run(__global int * v_sizes,
             dot_normal = -dot_normal;
             if(dir) p = -p;
         }
-        float3 strength = s2.new_strength_diffuse * dot_normal / convert_float(DIFFUSE_SAMPLE);
+//        float3 strength = s2.new_strength_diffuse * dot_normal / convert_float(DIFFUSE_SAMPLE);
+        float3 strength = s2.new_strength_diffuse * dot_normal;
 
         int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
         int new_id = atomic_inc(v_sizes + DATA_SIZE_OFFSET);
