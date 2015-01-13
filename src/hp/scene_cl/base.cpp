@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-12
+* @Last Modified time: 2015-01-13
 */
 
 #include <iostream>
@@ -20,6 +20,8 @@
         (X).s[2] = (Y)[2]; \
         (X).s[3] = 0; \
     } while(0)
+
+#define NORM(X) ((Vec((X)[0], (X)[1], (X)[2])).norm())
 
 #define CL_FLOAT3_TO_VEC(X) \
     hp::Vec(X.s[0], X.s[1], X.s[2])
@@ -42,6 +44,15 @@ cl::Scene::Scene(std::string filename) {
         ASSIGN_F3(x.specular, mat.specular);
         x.optical_density = mat.ior;
         x.dissolve = mat.dissolve;
+
+        Number specular_length = NORM(mat.specular);
+        Number diffuse_length = NORM(mat.diffuse);
+        Number refract_length = 1.0f - mat.dissolve;
+        Number sum = specular_length + diffuse_length + refract_length + 1e-4;
+        x.specular_possibility = specular_length / sum;
+        x.refract_possibility = refract_length / sum + x.specular_possibility;
+        // x.diffuse_possibility = diffuse_length / 2.0f / sum + x.refract_possibility;
+        x.diffuse_possibility = diffuse_length / sum + x.refract_possibility;
         this->materials.push_back(x);
     }
 

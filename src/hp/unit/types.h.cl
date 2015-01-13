@@ -26,4 +26,8 @@ typedef struct {
     float3 specular;
     float optical_density;
     float dissolve;
+
+    float specular_possibility;
+    float refract_possibility;
+    float diffuse_possibility;
 } Material;

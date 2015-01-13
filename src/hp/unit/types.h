@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-12
+* @Last Modified time: 2015-01-13
 */
 
 #ifndef __hp_unit_types_h__
@@ -38,6 +38,10 @@ typedef struct {
     cl_float3 specular;
     cl_float optical_density;
     cl_float dissolve;
+
+    cl_float specular_possibility;
+    cl_float refract_possibility;
+    cl_float diffuse_possibility;
 } Material;
 
 }

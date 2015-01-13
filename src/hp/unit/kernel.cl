@@ -173,7 +173,7 @@ __kernel void s1_run(__global int * v_sizes,
                      __global int * v_s2_diffuse,
                      __global int * v_s2_light,
                      __global float3 * scene_points,
-                     __global Material * v_materials,
+                     __constant Material * v_materials,
                      __global long * v_seed) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S1_SIZE_OFFSET]) return;
@@ -201,38 +201,39 @@ __kernel void s1_run(__global int * v_sizes,
     v_data[this_id].normal = normal;
 
     // russia roulette
-    float specular_length = length(mat.specular);
-    float diffuse_length = length(mat.diffuse);
-    float refract_length = 1.0f - mat.dissolve;
-    float sum = specular_length + diffuse_length + refract_length + 1e-4;
-
-    float specular_possibility = specular_length / sum;
+//    float specular_length = length(mat.specular);
+//    float diffuse_length = length(mat.diffuse);
+//    float refract_length = 1.0f - mat.dissolve;
+//    float sum = specular_length + diffuse_length + refract_length + 1e-4;
+//
+//    float specular_possibility = specular_length / sum;
 
     long rand_seed = v_seed[global_id] + global_id;
     float rand_num = randf(&rand_seed) + 0.5f;
 //    long rand_num = 0.f;
-    v_seed[global_id] = rand_num;
+    v_seed[global_id] = rand_seed;
 
-    if(rand_num < specular_possibility) {
+    if(rand_num < mat.specular_possibility) {
         // specular!
         int index = atomic_inc(v_sizes + S2_SPECULAR_SIZE_OFFSET);
         v_s2_specular[index] = this_id;
         v_data[this_id].strength = s1.strength * mat.specular;
         return;
     }
-    float refract_possibility = refract_length / sum + specular_possibility;
+//    float refract_possibility = refract_length / sum + specular_possibility;
 
-    if(rand_num < refract_possibility) {
+    if(rand_num < mat.refract_possibility) {
         // refract!
         int index = atomic_inc(v_sizes + S2_REFRACT_SIZE_OFFSET);
         v_s2_refract[index] = this_id;
-        v_data[this_id].strength = s1.strength * refract_length;
+        v_data[this_id].strength = s1.strength * (1.0f - mat.dissolve);
         v_data[this_id].optical_density = mat.optical_density;
         return;
     }
-    float diffuse_possibility = diffuse_length / 2.f / sum + refract_possibility;
+//    float diffuse_possibility = diffuse_length / 2.f / sum + refract_possibility;
+//    float diffuse_possibility = diffuse_length / sum + refract_possibility;
 
-    if(rand_num < diffuse_possibility) {
+    if(rand_num < mat.diffuse_possibility) {
         // diffuse!
         int index = atomic_inc(v_sizes + S2_DIFFUSE_SIZE_OFFSET);
         v_s2_diffuse[index] = this_id;

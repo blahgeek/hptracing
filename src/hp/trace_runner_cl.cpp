@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-12
+* @Last Modified time: 2015-01-13
 */
 
 #include <iostream>
@@ -60,7 +60,16 @@ void cl::TraceRunner::run() {
     cl_mem v_sizes_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
                                                   sizeof(cl_int) * 10, nullptr);
 
+    cl_int * intial_s0 = new cl_int[view_dir.size()];
+    for(int i = 0 ; i < view_dir.size() ; i += 1)
+        intial_s0[i] = i;
+
     // #define UNIT_DATA_SIZE 1000000
+    cl_mem v_data_initial_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
+                                                         sizeof(cl::unit_data) * view_dir.size(), s0_all.data());
+    cl_mem s0_initial_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
+                                                     sizeof(cl_int) * view_dir.size(), intial_s0);
+
     cl_mem v_data_mem = cl_program->createBuffer(CL_MEM_READ_WRITE, 
                                                  sizeof(cl::unit_data) * view_dir.size(), nullptr);
     cl_mem s0_mem = cl_program->createBuffer(CL_MEM_READ_WRITE, 
@@ -76,12 +85,12 @@ void cl::TraceRunner::run() {
     cl_mem s2_light_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
                                                    sizeof(cl_int) * view_dir.size(), nullptr);
 
-#define SAMPLES 50
+#define SAMPLES 100
     // Random seeds
     cl_long * random_seeds = new cl_long[view_dir.size()];
     for(int i = 0 ; i < view_dir.size() ; i += 1)
         random_seeds[i] = rand();
-    cl_mem rand_seed_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
+    cl_mem rand_seed_mem = cl_program->createBuffer(CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, 
                                                     sizeof(cl_long) * view_dir.size(), random_seeds);
 
     int max_data = -1;
@@ -91,22 +100,23 @@ void cl::TraceRunner::run() {
     uint64_t s1_time = 0;
     uint64_t s2_time = 0;
 
-    cl_int * intial_s0 = new cl_int[view_dir.size()];
-    for(int i = 0 ; i < view_dir.size() ; i += 1)
-        intial_s0[i] = i;
-
     for(size_t ii = 0 ; ii < SAMPLES ; ii += 1) {
         cl_int v_sizes[10] = {0};
         v_sizes[0] = view_dir.size();
         cl_program->writeBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
-        cl_program->writeBuffer(v_data_mem, 
-                                sizeof(cl::unit_data) * s0_all.size(), 
-                                s0_all.data());
+        // cl_program->writeBuffer(v_data_mem, 
+        //                         sizeof(cl::unit_data) * s0_all.size(), 
+        //                         s0_all.data());
 
-        cl_program->writeBuffer(s0_mem, sizeof(cl_int) * view_dir.size(), intial_s0);
+        // cl_program->writeBuffer(s0_mem, sizeof(cl_int) * view_dir.size(), intial_s0);
+        clEnqueueCopyBuffer(cl_program->commands, v_data_initial_mem, v_data_mem, 0, 0, sizeof(cl::unit_data) * view_dir.size(), 0, NULL, NULL);
+        clEnqueueCopyBuffer(cl_program->commands, s0_initial_mem, s0_mem, 0, 0, sizeof(cl_int) * view_dir.size(), 0, NULL, NULL);
+        clFinish(cl_program->commands);
 
         for(int i = 0 ; i < 4 ; i += 1) {
             hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
+
+            size_t local = 256;
 
             auto t0 = GetTimeStamp();
 
@@ -189,19 +199,19 @@ void cl::TraceRunner::run() {
             // global = (v_sizes[4] / local + 1) * local;
             cl_program->enqueueNDKernel(kernel_diffuse, v_sizes[4]);
             // clEnqueueNDRangeKernel(cl_program->commands, kernel_diffuse, 1, NULL, &global, &local, 0, NULL, NULL);
-            // run S2 light 
-            auto kernel_light = cl_program->getKernel("s2_light_run");
-            clSetKernelArg(kernel_light, 0, sizeof(cl_mem), &v_sizes_mem);
-            clSetKernelArg(kernel_light, 1, sizeof(cl_mem), &v_data_mem);
-            clSetKernelArg(kernel_light, 2, sizeof(cl_mem), &s2_light_mem);
-            clSetKernelArg(kernel_light, 3, sizeof(cl_mem), &s0_mem);
-            clSetKernelArg(kernel_light, 4, sizeof(cl_mem), &lights_mem);
-            clSetKernelArg(kernel_light, 5, sizeof(cl_int), &lights_size);
-            clSetKernelArg(kernel_light, 6, sizeof(cl_mem), &points_mem);
-            clSetKernelArg(kernel_light, 7, sizeof(cl_mem), &rand_seed_mem);
-            // global = (v_sizes[5] / local + 1) * local;
-            cl_program->enqueueNDKernel(kernel_light, v_sizes[5]);
-            // clEnqueueNDRangeKernel(cl_program->commands, kernel_light, 1, NULL, &global, &local, 0, NULL, NULL);
+            // // run S2 light 
+            // auto kernel_light = cl_program->getKernel("s2_light_run");
+            // clSetKernelArg(kernel_light, 0, sizeof(cl_mem), &v_sizes_mem);
+            // clSetKernelArg(kernel_light, 1, sizeof(cl_mem), &v_data_mem);
+            // clSetKernelArg(kernel_light, 2, sizeof(cl_mem), &s2_light_mem);
+            // clSetKernelArg(kernel_light, 3, sizeof(cl_mem), &s0_mem);
+            // clSetKernelArg(kernel_light, 4, sizeof(cl_mem), &lights_mem);
+            // clSetKernelArg(kernel_light, 5, sizeof(cl_int), &lights_size);
+            // clSetKernelArg(kernel_light, 6, sizeof(cl_mem), &points_mem);
+            // clSetKernelArg(kernel_light, 7, sizeof(cl_mem), &rand_seed_mem);
+            // // global = (v_sizes[5] / local + 1) * local;
+            // cl_program->enqueueNDKernel(kernel_light, v_sizes[5]);
+            // // clEnqueueNDRangeKernel(cl_program->commands, kernel_light, 1, NULL, &global, &local, 0, NULL, NULL);
             // finish S2
             clFinish(cl_program->commands);
             cl_program->readBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
@@ -218,7 +228,7 @@ void cl::TraceRunner::run() {
             clReleaseKernel(kernel_refract);
             clReleaseKernel(kernel_specular);
             clReleaseKernel(kernel_diffuse);
-            clReleaseKernel(kernel_light);
+            // clReleaseKernel(kernel_light);
 
             s0_time += t1 - t0;
             s1_time += t2 - t1;
