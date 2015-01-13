@@ -113,7 +113,8 @@ void cl::TraceRunner::run() {
         clEnqueueCopyBuffer(cl_program->commands, s0_initial_mem, s0_mem, 0, 0, sizeof(cl_int) * view_dir.size(), 0, NULL, NULL);
         clFinish(cl_program->commands);
 
-        for(int i = 0 ; i < 4 ; i += 1) {
+#define MAX_DEPTH 6
+        for(int i = 0 ; i < MAX_DEPTH ; i += 1) {
             hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
 
             size_t local = 256;
@@ -169,6 +170,8 @@ void cl::TraceRunner::run() {
             cl_program->writeBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
             clReleaseKernel(kernel);
 
+            if(i == MAX_DEPTH - 1) break;
+
             auto t2 = GetTimeStamp();
 
             // run S2 refract
@@ -199,19 +202,19 @@ void cl::TraceRunner::run() {
             // global = (v_sizes[4] / local + 1) * local;
             cl_program->enqueueNDKernel(kernel_diffuse, v_sizes[4]);
             // clEnqueueNDRangeKernel(cl_program->commands, kernel_diffuse, 1, NULL, &global, &local, 0, NULL, NULL);
-            // // run S2 light 
-            // auto kernel_light = cl_program->getKernel("s2_light_run");
-            // clSetKernelArg(kernel_light, 0, sizeof(cl_mem), &v_sizes_mem);
-            // clSetKernelArg(kernel_light, 1, sizeof(cl_mem), &v_data_mem);
-            // clSetKernelArg(kernel_light, 2, sizeof(cl_mem), &s2_light_mem);
-            // clSetKernelArg(kernel_light, 3, sizeof(cl_mem), &s0_mem);
-            // clSetKernelArg(kernel_light, 4, sizeof(cl_mem), &lights_mem);
-            // clSetKernelArg(kernel_light, 5, sizeof(cl_int), &lights_size);
-            // clSetKernelArg(kernel_light, 6, sizeof(cl_mem), &points_mem);
-            // clSetKernelArg(kernel_light, 7, sizeof(cl_mem), &rand_seed_mem);
-            // // global = (v_sizes[5] / local + 1) * local;
-            // cl_program->enqueueNDKernel(kernel_light, v_sizes[5]);
-            // // clEnqueueNDRangeKernel(cl_program->commands, kernel_light, 1, NULL, &global, &local, 0, NULL, NULL);
+            // run S2 light 
+            auto kernel_light = cl_program->getKernel("s2_light_run");
+            clSetKernelArg(kernel_light, 0, sizeof(cl_mem), &v_sizes_mem);
+            clSetKernelArg(kernel_light, 1, sizeof(cl_mem), &v_data_mem);
+            clSetKernelArg(kernel_light, 2, sizeof(cl_mem), &s2_light_mem);
+            clSetKernelArg(kernel_light, 3, sizeof(cl_mem), &s0_mem);
+            clSetKernelArg(kernel_light, 4, sizeof(cl_mem), &lights_mem);
+            clSetKernelArg(kernel_light, 5, sizeof(cl_int), &lights_size);
+            clSetKernelArg(kernel_light, 6, sizeof(cl_mem), &points_mem);
+            clSetKernelArg(kernel_light, 7, sizeof(cl_mem), &rand_seed_mem);
+            // global = (v_sizes[5] / local + 1) * local;
+            cl_program->enqueueNDKernel(kernel_light, v_sizes[5]);
+            // clEnqueueNDRangeKernel(cl_program->commands, kernel_light, 1, NULL, &global, &local, 0, NULL, NULL);
             // finish S2
             clFinish(cl_program->commands);
             cl_program->readBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);

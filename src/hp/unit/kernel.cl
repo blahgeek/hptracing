@@ -298,11 +298,19 @@ __kernel void s2_refract_run(__global int * v_sizes,
     float alpha = acos(cos_alpha);
     float3 p = cos_alpha * s2.normal;
     float3 q = normalize(s2.in_dir + p);
-    float sin_beta = sin(alpha) * pow(s2.optical_density, reverse);
-    float beta = asin(sin_beta);
+    float sin_beta = sin(alpha) * pow(s2.optical_density, -reverse);
 
-    float3 refraction_dir = -reverse * cos(beta) * s2.normal +
-                            sin_beta * q;
+    float3 final_dir; // may be inner reflect, may be refract
+    if(sin_beta <= 1.f) {
+        // refract
+        float beta = asin(sin_beta);
+
+        final_dir = -reverse * cos(beta) * s2.normal +
+                    sin_beta * q;
+    }
+    else {
+        final_dir = s2.in_dir + p + p;
+    }
 
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
 //    int new_id = atomic_inc(v_sizes + DATA_SIZE_OFFSET);
@@ -311,7 +319,7 @@ __kernel void s2_refract_run(__global int * v_sizes,
 //    v_data[new_id].orig_id = s2.orig_id;
 //    v_data[new_id].strength = s2.new_strength_refract;
     v_data[this_id].start_p = s2.intersect_p;
-    v_data[this_id].in_dir = refraction_dir;
+    v_data[this_id].in_dir = final_dir;
 }
 
 __kernel void s2_specular_run(__global int * v_sizes,

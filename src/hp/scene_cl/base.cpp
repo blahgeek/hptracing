@@ -51,8 +51,8 @@ cl::Scene::Scene(std::string filename) {
         Number sum = specular_length + diffuse_length + refract_length + 1e-4;
         x.specular_possibility = specular_length / sum;
         x.refract_possibility = refract_length / sum + x.specular_possibility;
-        // x.diffuse_possibility = diffuse_length / 2.0f / sum + x.refract_possibility;
-        x.diffuse_possibility = diffuse_length / sum + x.refract_possibility;
+        x.diffuse_possibility = diffuse_length * 0.9f / sum + x.refract_possibility;
+        // x.diffuse_possibility = diffuse_length / sum + x.refract_possibility;
         this->materials.push_back(x);
     }
 
