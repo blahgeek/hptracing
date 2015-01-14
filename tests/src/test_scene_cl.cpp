@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-13
+* @Last Modified time: 2015-01-14
 */
 
 #include <iostream>
@@ -12,6 +12,7 @@
 #include <algorithm>
 #include "./hp/scene_cl/base.h"
 #include "./hp/scene_cl/uniform_box.h"
+#include "./hp/scene_cl/kdtree.h"
 
 using namespace std;
 
@@ -27,5 +28,10 @@ TEST(SceneCLTest, load) {
 
 TEST(SceneCLTest, uniform_box_load) {
     auto scene = std::make_unique<hp::cl::UniformBox>(std::string("obj/cornell_box.obj"));
+    EXPECT_TRUE(bool(scene));
+}
+
+TEST(SceneCLTest, kdtree_load) {
+    auto scene = std::make_unique<hp::cl::KDTree>(std::string("obj/cornell_box.obj"));
     EXPECT_TRUE(bool(scene));
 }
