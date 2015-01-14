@@ -42,17 +42,74 @@ inline float3 randf3(long * seed) {
     return normalize(ret);
 }
 
-#define DIFFICULTY 7
+//#define DIFFICULTY 7
+//
+//#define DIFFUSE_SAMPLE (16 * DIFFICULTY)
+//#define LIGHT_SAMPLE (2 * DIFFICULTY)
+//
+//#define DIFFUSE_SAMPLE_DIV (2 * DIFFICULTY)
+//
+//#define GENERAL_THRESHOLD (5e-3f / convert_float(DIFFICULTY))
+//
+//#define LIGHT_SAMPLE_THRESHOLD (1.0f / DIFFUSE_SAMPLE_DIV / 2.0f)
+//#define DIFFUSE_SAMPLE_THRESHOLD (1.0f / DIFFUSE_SAMPLE_DIV * 1.5f)
+#define GENERAL_THRESHOLD (1e-3f)
 
-#define DIFFUSE_SAMPLE (16 * DIFFICULTY)
-#define LIGHT_SAMPLE (2 * DIFFICULTY)
+inline float _box_intersect_dimension(float p0, float p, float s) {
+    if(p == 0) return -1;
+    return (s - p0) / p;
+}
 
-#define DIFFUSE_SAMPLE_DIV (2 * DIFFICULTY)
+#define SWAP_F(X, Y) \
+    do { \
+        float __tmp = (X); \
+        (X) = (Y); \
+        (Y) = __tmp; \
+    } while(0) 
 
-#define GENERAL_THRESHOLD (5e-3f / convert_float(DIFFICULTY))
+//bool
+//intersection(box b, ray r)
+//{
+//  double tx1 = (b.min.x - r.x0.x)*r.n_inv.x;
+//  double tx2 = (b.max.x - r.x0.x)*r.n_inv.x;
+// 
+//  double tmin = min(tx1, tx2);
+//  double tmax = max(tx1, tx2);
+// 
+//  double ty1 = (b.min.y - r.x0.y)*r.n_inv.y;
+//  double ty2 = (b.max.y - r.x0.y)*r.n_inv.y;
+// 
+//  tmin = max(tmin, min(ty1, ty2));
+//  tmax = min(tmax, max(ty1, ty2));
+// 
+//  return tmax >= tmin;
+//}
+bool _box_intersect(float3 box_start, float3 box_end, float3 start_p, float3 in_dir) {
+    // start_p inside box
+    if(start_p.x >= box_start.x && start_p.x <= box_end.x &&
+       start_p.y >= box_start.y && start_p.y <= box_end.y &&
+       start_p.z >= box_start.z && start_p.z <= box_end.z) return true;
+    float3 mins, maxs;
 
-#define LIGHT_SAMPLE_THRESHOLD (1.0f / DIFFUSE_SAMPLE_DIV / 2.0f)
-#define DIFFUSE_SAMPLE_THRESHOLD (1.0f / DIFFUSE_SAMPLE_DIV * 1.5f)
+    mins.s0 = _box_intersect_dimension(start_p.x, in_dir.x, box_start.x);
+    maxs.s0 = _box_intersect_dimension(start_p.x, in_dir.x, box_end.x);
+    if(mins.s0 > maxs.s0) SWAP_F(mins.s0, maxs.s0);
+    mins.s1 = _box_intersect_dimension(start_p.y, in_dir.y, box_start.y);
+    maxs.s1 = _box_intersect_dimension(start_p.y, in_dir.y, box_end.y);
+    if(mins.s1 > maxs.s1) SWAP_F(mins.s1, maxs.s1);
+    mins.s2 = _box_intersect_dimension(start_p.z, in_dir.z, box_start.z);
+    maxs.s2 = _box_intersect_dimension(start_p.z, in_dir.z, box_end.z);
+    if(mins.s2 > maxs.s2) SWAP_F(mins.s2, maxs.s2);
+
+    float max_of_mins = fmax(fmax(mins.x, mins.y), mins.z);
+    float min_of_maxs = maxs.s0;
+
+    if(min_of_maxs < 0 || (maxs.s1 >= 0 && maxs.s1 < min_of_maxs))
+        min_of_maxs = maxs.s1;
+    if(min_of_maxs < 0 || (maxs.s2 >= 0 && maxs.s2 < min_of_maxs))
+        min_of_maxs = maxs.s2;
+    return max_of_mins <= min_of_maxs;
+}
 
 float _single_intersect(float3 _start_p, float3 in_dir,
                         float3 pa, float3 pb, float3 pc) {
@@ -125,6 +182,87 @@ float _single_intersect(float3 _start_p, float3 in_dir,
 
     return -44;
 
+}
+
+__kernel void kdtree_intersect(__global int * v_sizes,
+                               __global unit_data * v_data,
+                               __global int * v_s0,
+                               __global int * v_s1,
+                               __global float3 * scene_points,
+                               __global int4 * scene_mesh,
+                               __constant int * v_kd_leaf_data,
+                               __constant KDTreeNodeHeader * v_kd_node_header,
+                               const int kd_node_size) {
+    int global_id = get_global_id(0);
+    if(global_id >= v_sizes[S0_SIZE_OFFSET]) return;
+
+    int this_id = v_s0[global_id];
+    unit_data s0 = v_data[this_id];
+
+    int match_datas[256];
+    int match_data_size = 0;
+
+    int node_index = 0;
+    int come_from_child = 0;
+    while(node_index < kd_node_size) {
+        int goto_child = 0;
+
+        KDTreeNodeHeader node = v_kd_node_header[node_index];
+        if(come_from_child == 0) {
+            if(_box_intersect(node.box_start, node.box_end, s0.start_p, s0.in_dir)) {
+                if(node.child < 0) {
+                    if(match_data_size < 256 && node.data >= 0)
+                        match_datas[match_data_size++] = node.data;
+                }
+                else 
+                    goto_child = 1;
+            }
+        } 
+
+        if(goto_child) {
+            come_from_child = 0;
+            node_index = node.child;
+        } else {
+            if(node.sibling >= 0) {
+                come_from_child = 0;
+                node_index = node.sibling;
+            } else if(node.parent >= 0) {
+                come_from_child = 1;
+                node_index = node.parent;
+            } else {
+                // root
+                break;
+            }
+        }
+    }
+
+    int geo_id = -1;
+    float intersect_number = -42;
+
+    for(int i = 0 ; i < match_data_size ; i += 1) {
+        __constant int * data = v_kd_leaf_data + match_datas[i];
+        int data_size = data[0];
+        for(int x = 0 ; x < data_size ; x += 1) {
+            int triangle_id = data[1+x];
+            int4 triangle = scene_mesh[triangle_id];
+            float result = _single_intersect(s0.start_p, s0.in_dir,
+                                             scene_points[triangle.x],
+                                             scene_points[triangle.y],
+                                             scene_points[triangle.z]);
+            if(result > 0 && (intersect_number < 0 || result < intersect_number)) {
+                intersect_number = result;
+                geo_id = triangle_id;
+            }
+        }
+    }
+
+    if(geo_id != -1) {
+        int index = atomic_inc(v_sizes + S1_SIZE_OFFSET);
+        v_s1[index] = this_id;
+
+        v_data[this_id].geometry = scene_mesh[geo_id];
+        v_data[this_id].intersect_number = intersect_number;
+    }
 }
 
 __kernel void naive_intersect(__global int * v_sizes,

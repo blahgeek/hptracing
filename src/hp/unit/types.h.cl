@@ -31,3 +31,12 @@ typedef struct {
     float refract_possibility;
     float diffuse_possibility;
 } Material;
+
+typedef struct {
+    float3 box_start;
+    float3 box_end;
+    int child; // first child, -1 for null
+    int parent;
+    int sibling;
+    int data;
+} KDTreeNodeHeader;

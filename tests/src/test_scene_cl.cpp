@@ -34,4 +34,5 @@ TEST(SceneCLTest, uniform_box_load) {
 TEST(SceneCLTest, kdtree_load) {
     auto scene = std::make_unique<hp::cl::KDTree>(std::string("obj/cornell_box.obj"));
     EXPECT_TRUE(bool(scene));
+    scene->getData();
 }

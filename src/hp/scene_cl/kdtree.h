@@ -55,6 +55,8 @@ namespace cl {
     public:
         std::unique_ptr<KDTreeNode> root = nullptr;
         KDTree(std::string filename);
+        std::pair<std::vector<cl::KDTreeNodeHeader>, std::vector<cl_int>>
+            getData();
     };
 
 }

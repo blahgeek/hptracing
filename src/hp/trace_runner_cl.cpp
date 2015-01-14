@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-13
+* @Last Modified time: 2015-01-14
 */
 
 #include <iostream>
@@ -36,11 +36,21 @@ void cl::TraceRunner::run() {
     // Aha! magic!
     // std::random_shuffle(s0_all.begin(), s0_all.end());
 
+    auto kdtree_data = scene->getData();
+
     // Scene related data, readonly
     cl_mem points_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                                  sizeof(cl_float3) * scene->points.size(),
                                                  scene->points.data());
-    cl_int geometries_size = scene->geometries.size();
+    // cl_int geometries_size = scene->geometries.size();
+    cl_mem kdtree_node_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                                      sizeof(cl::KDTreeNodeHeader) * kdtree_data.first.size(),
+                                                      kdtree_data.first.data());
+    cl_int kdtree_node_size = kdtree_data.first.size();
+    cl_mem kdtree_leaf_data_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                                           sizeof(cl_int) * kdtree_data.second.size(),
+                                                           kdtree_data.second.data());
+    // geometries_size /= 10;
     cl_mem geometries_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                                      sizeof(cl_int4) * scene->geometries.size(),
                                                      scene->geometries.data());
@@ -122,17 +132,30 @@ void cl::TraceRunner::run() {
             auto t0 = GetTimeStamp();
 
             // run S0
-            auto kernel = cl_program->getKernel("naive_intersect");
+            // auto kernel = cl_program->getKernel("naive_intersect");
+            // clSetKernelArg(kernel, 0, sizeof(cl_mem), &v_sizes_mem);
+            // clSetKernelArg(kernel, 1, sizeof(cl_mem), &v_data_mem);
+            // clSetKernelArg(kernel, 2, sizeof(cl_mem), &s0_mem);
+            // clSetKernelArg(kernel, 3, sizeof(cl_mem), &s1_mem);
+            // clSetKernelArg(kernel, 4, sizeof(cl_mem), &points_mem);
+            // clSetKernelArg(kernel, 5, sizeof(cl_mem), &geometries_mem);
+            // clSetKernelArg(kernel, 6, sizeof(cl_int), &geometries_size);
+            auto kernel = cl_program->getKernel("kdtree_intersect");
             clSetKernelArg(kernel, 0, sizeof(cl_mem), &v_sizes_mem);
             clSetKernelArg(kernel, 1, sizeof(cl_mem), &v_data_mem);
             clSetKernelArg(kernel, 2, sizeof(cl_mem), &s0_mem);
             clSetKernelArg(kernel, 3, sizeof(cl_mem), &s1_mem);
             clSetKernelArg(kernel, 4, sizeof(cl_mem), &points_mem);
             clSetKernelArg(kernel, 5, sizeof(cl_mem), &geometries_mem);
-            clSetKernelArg(kernel, 6, sizeof(cl_int), &geometries_size);
+            clSetKernelArg(kernel, 6, sizeof(cl_mem), &kdtree_leaf_data_mem);
+            clSetKernelArg(kernel, 7, sizeof(cl_mem), &kdtree_node_mem);
+            clSetKernelArg(kernel, 8, sizeof(cl_int), &kdtree_node_size);
 
+            // local = 2;
+            // size_t global = 2;
             // global = (v_sizes[0] / local + 1) * local;
-            cl_program->enqueueNDKernel(kernel, v_sizes[0]);
+            cl_program->enqueueNDKernel(kernel, v_sizes[0] );
+            // cl_program->enqueueNDKernel(kernel, 5);
             // clEnqueueNDRangeKernel(cl_program->commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
             clFinish(cl_program->commands);
             cl_program->readBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);

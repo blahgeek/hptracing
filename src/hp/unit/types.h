@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-13
+* @Last Modified time: 2015-01-14
 */
 
 #ifndef __hp_unit_types_h__
@@ -43,6 +43,15 @@ typedef struct {
     cl_float refract_possibility;
     cl_float diffuse_possibility;
 } Material;
+
+typedef struct {
+    cl_float3 box_start;
+    cl_float3 box_end;
+    cl_int child; // first child, -1 for null
+    cl_int parent;
+    cl_int sibling;
+    cl_int data;
+} KDTreeNodeHeader;
 
 }
 }

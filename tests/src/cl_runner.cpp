@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-07
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-12
+* @Last Modified time: 2015-01-14
 */
 
 #include <iostream>
@@ -11,6 +11,7 @@
 
 #include "hp/trace_runner_cl.h"
 #include "hp/scene_cl/base.h"
+#include "hp/scene_cl/kdtree.h"
 
 using namespace hp;
 
@@ -23,7 +24,7 @@ using namespace hp;
     } while(0)
 
 TEST(CLRunner, run) {
-    auto scene = std::make_unique<cl::Scene>(std::string("obj/cornell_box.obj"));
+    auto scene = std::make_unique<cl::KDTree>(std::string("obj/cornell_box.obj"));
 
     Vec _view_p(250, 250, -500);
     cl_float3 view_p;

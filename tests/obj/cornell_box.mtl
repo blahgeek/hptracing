@@ -5,10 +5,10 @@ Ks 0 0 0
 
 newmtl transparent
 Ka 0 0 0
-Kd 0.1 0.1 0.1
-Ks 0.2 0.2 0.2
+Kd 0 0 0
+Ks 1 1 1
 Ni 1.5
-d 0.1
+d 1.0
 
 newmtl red
 Ka 0 0 0

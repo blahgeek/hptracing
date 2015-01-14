@@ -17,7 +17,7 @@ std::pair<cl_float, cl_float> cl::KDTreeNode::triangleMinMax(cl_int4 geo, int di
         val[i] = points[geo.s[i]].s[dimension];
     cl_float min = *std::min_element(val, val+3);
     cl_float max = *std::max_element(val, val+3);
-    return std::make_tuple(min, max);
+    return std::make_pair(min, max);
 }
 
 void cl::KDTreeNode::calcMinMaxVals() {
@@ -221,5 +221,49 @@ cl::KDTree::KDTree(std::string filename): cl::Scene(filename) {
     this->root->split();
     this->root->removeEmptyNode();
 
-    this->root->debugPrint();
+    // this->root->debugPrint();
 }
+
+std::pair<std::vector<cl::KDTreeNodeHeader>, std::vector<cl_int>>
+    cl::KDTree::getData() {
+
+        std::vector<KDTreeNode *> nodes;
+        std::map<KDTreeNode *, int> nodes_map;
+        std::function<void(KDTreeNode * node)> walk;
+        walk = [&](KDTreeNode * node) {
+            nodes_map[node] = nodes.size();
+            nodes.push_back(node);
+            if(node->left) walk(node->left.get());
+            if(node->right) walk(node->right.get());
+        };
+        walk(this->root.get());
+
+        std::vector<cl::KDTreeNodeHeader> header_data;
+        std::vector<cl_int> triangle_data;
+
+        for(int i = 0 ; i < nodes.size() ; i += 1) {
+            KDTreeNodeHeader header;
+            header.data = -1;
+            if(nodes[i]->geo_indexes.size() > 0) {
+                header.data = triangle_data.size();
+                triangle_data.push_back(nodes[i]->geo_indexes.size());
+                for(auto & x: nodes[i]->geo_indexes)
+                    triangle_data.push_back(x);
+            }
+            header.box_start = nodes[i]->box_start;
+            header.box_end = nodes[i]->box_end;
+            header.child = (nodes[i]->left == nullptr) ? -1 : 
+                            nodes_map[nodes[i]->left.get()];
+            header.parent = (nodes[i]->parent == nullptr) ? -1 :
+                            nodes_map[nodes[i]->parent];
+            header.sibling = -1;
+            if(nodes[i]->parent != nullptr && nodes[i]->parent->right != nullptr &&
+               nodes[i]->parent->right.get() != nodes[i])
+                header.sibling = nodes_map[nodes[i]->parent->right.get()];
+
+            header_data.push_back(header);
+        }
+
+        return std::make_pair(header_data, triangle_data);
+
+    }

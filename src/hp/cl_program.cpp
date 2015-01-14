@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-12
+* @Last Modified time: 2015-01-14
 */
 
 #include "./cl_program.h"
@@ -20,7 +20,7 @@ static std::string read_file(std::string filename) {
 void hp::CLProgram::enqueueNDKernel(cl_kernel & kernel, size_t size) {
     if(size == 0) return;
 
-    size_t local = 256;
+    size_t local = 32;
     // auto err = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
     // hp_assert(err == CL_SUCCESS);
 
