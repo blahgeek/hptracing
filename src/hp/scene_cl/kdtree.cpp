@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-14
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-14
+* @Last Modified time: 2015-01-17
 */
 
 #include <iostream>
@@ -184,31 +184,47 @@ void cl::KDTreeNode::removeEmptyNode() {
         this->box_end = right->box_end;
         this->geo_indexes = right->geo_indexes;
         this->left = std::move(right->left);
+        hp_assert(right->left == nullptr);
         std::unique_ptr<KDTreeNode> tmp = std::move(right->right);
+        hp_assert(right->right == nullptr);
         this->right = std::move(tmp);
+        if(this->right)
+            this->right->parent = this;
+        if(this->left)
+            this->left->parent = this;
+        return;
     }
     if(right && right->geo_indexes.size() == 0 && right->left == nullptr && right->right == nullptr) {
         this->box_start = left->box_start;
         this->box_end = left->box_end;
         this->geo_indexes = left->geo_indexes;
         this->right = std::move(left->right);
+        hp_assert(left->right == nullptr);
         std::unique_ptr<KDTreeNode> tmp = std::move(left->left);
+        hp_assert(left->left == nullptr);
         this->left = std::move(tmp);
+        if(this->right)
+            this->right->parent = this;
+        if(this->left)
+            this->left->parent = this;
+        return;
     }
 }
 
 void cl::KDTreeNode::debugPrint(int depth) {
     for(int i = 0 ; i < depth ; i += 1)
-        printf("  ");
-    printf("(%f %f %f)->(%f %f %f) ",
+        fprintf(stderr, "  ");
+    fprintf(stderr, "(%f %f %f)->(%f %f %f) ",
            box_start.s[0], box_start.s[1], box_start.s[2],
            box_end.s[0], box_end.s[1], box_end.s[2]);
     if(geo_indexes.size() != 0)
-        printf(" LEAF, size = %lu\n", geo_indexes.size());
+        fprintf(stderr, " LEAF, size = %lu\n", geo_indexes.size());
     else {
-        printf("\n");
-        left->debugPrint(depth+1);
-        right->debugPrint(depth+1);
+        fprintf(stderr, "\n");
+        if(left)
+            left->debugPrint(depth+1);
+        if(right)
+            right->debugPrint(depth+1);
     }
 }
 
@@ -221,7 +237,7 @@ cl::KDTree::KDTree(std::string filename): cl::Scene(filename) {
     this->root->split();
     this->root->removeEmptyNode();
 
-    // this->root->debugPrint();
+    this->root->debugPrint();
 }
 
 std::pair<std::vector<cl::KDTreeNodeHeader>, std::vector<cl_int>>
@@ -242,24 +258,26 @@ std::pair<std::vector<cl::KDTreeNodeHeader>, std::vector<cl_int>>
         std::vector<cl_int> triangle_data;
 
         for(int i = 0 ; i < nodes.size() ; i += 1) {
+            auto node = nodes[i];
             KDTreeNodeHeader header;
             header.data = -1;
-            if(nodes[i]->geo_indexes.size() > 0) {
+            if(node->geo_indexes.size() > 0) {
                 header.data = triangle_data.size();
-                triangle_data.push_back(nodes[i]->geo_indexes.size());
-                for(auto & x: nodes[i]->geo_indexes)
+                triangle_data.push_back(node->geo_indexes.size());
+                for(auto & x: node->geo_indexes)
                     triangle_data.push_back(x);
             }
-            header.box_start = nodes[i]->box_start;
-            header.box_end = nodes[i]->box_end;
-            header.child = (nodes[i]->left == nullptr) ? -1 : 
-                            nodes_map[nodes[i]->left.get()];
-            header.parent = (nodes[i]->parent == nullptr) ? -1 :
-                            nodes_map[nodes[i]->parent];
+            header.box_start = node->box_start;
+            header.box_end = node->box_end;
+            header.child = (node->left == nullptr) ? -1 : 
+                            nodes_map[node->left.get()];
+            header.parent = (node->parent == nullptr) ? -1 :
+                            nodes_map[node->parent];
             header.sibling = -1;
-            if(nodes[i]->parent != nullptr && nodes[i]->parent->right != nullptr &&
-               nodes[i]->parent->right.get() != nodes[i])
-                header.sibling = nodes_map[nodes[i]->parent->right.get()];
+            if(node->parent != nullptr && node->parent->right != nullptr &&
+               node->parent->right.get() != node) {
+                header.sibling = nodes_map[node->parent->right.get()];
+            }
 
             header_data.push_back(header);
         }
