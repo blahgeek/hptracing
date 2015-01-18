@@ -91,9 +91,9 @@ void TraceRunner::run() {
     for(size_t i = 0 ; i < view_dir.size() ; i += 1)
         intial_s0[i] = i;
 
-    cl::Buffer s0_initial_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
+    cl::Buffer stage_cache_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
                               sizeof(cl_int) * view_dir.size(), intial_s0);
-    cl::Buffer v_data_initial_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
+    cl::Buffer v_data_initial_mem(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, 
                                   sizeof(unit_data) * unit_data_all.size(), 
                                   unit_data_all.data());
 
@@ -111,6 +111,40 @@ void TraceRunner::run() {
     cl::Buffer rand_seed_mem(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, 
                              sizeof(cl_long) * view_dir.size(), random_seeds);
 
+    // Compute first level intersect and cache stage_s1
+    cl_int v_sizes[10] = {0};
+    v_sizes[0] = view_dir.size();
+    queue.enqueueWriteBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
+    // queue.enqueueCopyBuffer(v_data_initial_mem, v_data_mem, 0, 0, sizeof(unit_data) * unit_data_all.size());
+    // queue.enqueueCopyBuffer(stage_cache_mem, stage_mem[0], 0, 0, sizeof(cl_int) * unit_data_all.size());
+    // queue.finish();
+
+#define WORK_GROUP_SIZE 256
+
+#define ND_RANGE(queue, kernel, global) \
+    (queue).enqueueNDRangeKernel((kernel), 0, \
+                                 (((global) / (WORK_GROUP_SIZE) + 1) * (WORK_GROUP_SIZE)), \
+                                 (WORK_GROUP_SIZE))
+
+    cl::Kernel kernel(program, "kdtree_intersect");
+    kernel.setArg(0, v_sizes_mem);
+    kernel.setArg(1, v_data_initial_mem);
+    kernel.setArg(2, stage_cache_mem); // s0
+    kernel.setArg(3, stage_mem[1]); // s1
+    kernel.setArg(4, points_mem);
+    kernel.setArg(5, geometries_mem);
+    kernel.setArg(6, kdtree_leaf_data_mem);
+    kernel.setArg(7, kdtree_node_mem);
+    kernel.setArg(8, kdtree_node_size);
+    ND_RANGE(queue, kernel, view_dir.size());
+    // queue.enqueueNDRangeKernel(kernel, 0, view_dir.size(), 256);
+    queue.finish();
+
+    queue.enqueueReadBuffer(v_sizes_mem, CL_FALSE, 0, sizeof(cl_int) * 10, v_sizes);
+    queue.enqueueCopyBuffer(stage_mem[1], stage_cache_mem, 0, 0, sizeof(cl_int) * unit_data_all.size());
+    queue.finish();
+    auto intial_s1_size = v_sizes[1];
+
 #define SAMPLES 10
 
     uint64_t s0_time = 0;
@@ -119,12 +153,12 @@ void TraceRunner::run() {
 
     for(size_t ii = 0 ; ii < SAMPLES ; ii += 1) {
 
-        cl_int v_sizes[10] = {0};
-        v_sizes[0] = view_dir.size();
+        memset(v_sizes, 0, sizeof(v_sizes));
+        v_sizes[1] = intial_s1_size;
 
         queue.enqueueWriteBuffer(v_sizes_mem, CL_FALSE, 0, sizeof(cl_int) * 10, v_sizes);
         queue.enqueueCopyBuffer(v_data_initial_mem, v_data_mem, 0, 0, sizeof(unit_data) * unit_data_all.size());
-        queue.enqueueCopyBuffer(s0_initial_mem, stage_mem[0], 0, 0, sizeof(cl_int) * unit_data_all.size());
+        queue.enqueueCopyBuffer(stage_cache_mem, stage_mem[1], 0, 0, sizeof(cl_int) * unit_data_all.size());
         queue.finish();
 
 #define MAX_DEPTH 6
@@ -143,7 +177,9 @@ void TraceRunner::run() {
             kernel.setArg(6, kdtree_leaf_data_mem);
             kernel.setArg(7, kdtree_node_mem);
             kernel.setArg(8, kdtree_node_size);
-            queue.enqueueNDRangeKernel(kernel, 0, v_sizes[0]);
+            if(v_sizes[0])
+                ND_RANGE(queue, kernel, v_sizes[0]);
+                // queue.enqueueNDRangeKernel(kernel, 0, v_sizes[0], 256);
             queue.finish();
 
             queue.enqueueReadBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
@@ -164,7 +200,9 @@ void TraceRunner::run() {
             kernel.setArg(8, points_mem);
             kernel.setArg(9, materials_mem);
             kernel.setArg(10, rand_seed_mem);
-            queue.enqueueNDRangeKernel(kernel, 0, v_sizes[1]);
+            if(v_sizes[1])
+                ND_RANGE(queue, kernel, v_sizes[1]);
+                // queue.enqueueNDRangeKernel(kernel, 0, v_sizes[1], 256);
             queue.finish();
 
             queue.enqueueReadBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
@@ -194,7 +232,9 @@ void TraceRunner::run() {
             kernels[3].setArg(7, rand_seed_mem);
 
             for(int i = 0 ; i < 4 ; i += 1)
-                queue.enqueueNDRangeKernel(kernels[i], 0, v_sizes[i+2]);
+                if(v_sizes[i+2])
+                    ND_RANGE(queue, kernels[i], v_sizes[i+2]);
+                    // queue.enqueueNDRangeKernel(kernels[i], 0, v_sizes[i+2], 256);
             queue.finish();
 
             queue.enqueueReadBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);

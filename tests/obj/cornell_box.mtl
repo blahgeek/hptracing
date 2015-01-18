@@ -6,9 +6,9 @@ Ks 0 0 0
 newmtl transparent
 Ka 0 0 0
 Kd 0 0 0
-Ks 1 1 1
+Ks 0.1 0.1 0.1
 Ni 1.5
-d 1.0
+d 0.0
 
 newmtl red
 Ka 0 0 0

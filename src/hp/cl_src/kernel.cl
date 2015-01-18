@@ -24,6 +24,7 @@ inline void atomic_add_global(volatile global float *source, const float operand
 }
 
 #define RAND_MAX 0xFFFFFFFFL
+#define PI 3.1415926535f
 
 inline long rand(long * seed) {
     *seed = ((*seed) * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1);
@@ -31,13 +32,13 @@ inline long rand(long * seed) {
 }
 
 inline float randf(long * seed) {
-    return convert_float(rand(seed)) / convert_float(RAND_MAX) - 0.5f;
+    return convert_float(rand(seed)) / convert_float(RAND_MAX);
 }
 
 inline float3 randf3(long * seed) {
     float3 ret;
-    float alpha = randf(seed);
-    float beta = randf(seed);
+    float alpha = randf(seed) * PI;
+    float beta = randf(seed) * PI;
     float cos_beta = cos(beta);
     ret.x = cos_beta * cos(alpha);
     ret.y = cos_beta * sin(alpha);
@@ -81,32 +82,9 @@ bool _box_intersect(float3 box_start, float3 box_end, float3 start_p, float3 in_
     return max_of_mins <= min_of_maxs;
 }
 
-float _single_intersect(float3 _start_p, float3 in_dir,
+float _single_intersect(float3 start_p, float3 in_dir,
                         float3 pa, float3 pb, float3 pc) {
-    float3 start_p = _start_p + 0.5f * in_dir;
 
-//    #define EPSILON 1e-3f
-//
-//    float3 e1 = pb - pa;
-//    float3 e2 = pc - pa;
-//    float3 P = cross(in_dir, e2);
-//    float det = dot(e1, P);
-//    if(det > EPSILON && det < EPSILON) return -1;
-//
-//    float inv_det = 1.f / det;
-//    float3 T = start_p - pa;
-//    float u = dot(T, P) * inv_det;
-//    if(u < 0.f || u > 1.f) return -1;
-//
-//    float3 Q = cross(T, e1);
-//    float v = dot(in_dir, Q) * inv_det;
-//    if(v < 0.f || u + v  > 1.f) return -1;
-//
-//    float t = dot(e2, Q) * inv_det;
-//    if(t > 0.5) return t;
-//
-//    return -1;
-//
     float3 a = in_dir;
     float3 b = pa - pb;
     float3 c = pa - pc;
@@ -148,7 +126,7 @@ float _single_intersect(float3 _start_p, float3 in_dir,
     // nan >= 0 returns false
     if(m >= 0 && m <= 1 && n >= 0 && n <= 1
        && m + n < 1 && x > 0) 
-        return x + 0.5f;
+        return x;
 
     return -44;
 
@@ -301,12 +279,15 @@ __kernel void s1_run(__global int * v_sizes,
 //    atomic_add_global(target+1, result.y);
 //    atomic_add_global(target+2, result.z);
 
+    if(length(s1.strength) < GENERAL_THRESHOLD)
+        return;
+
     v_data[this_id].intersect_p = intersect_p;
     v_data[this_id].normal = normal;
 
 
     long rand_seed = v_seed[global_id] + global_id;
-    float rand_num = randf(&rand_seed) + 0.5f;
+    float rand_num = randf(&rand_seed);
     v_seed[global_id] = rand_seed;
 
     if(rand_num < mat.specular_possibility) {
@@ -375,7 +356,7 @@ __kernel void s2_refract_run(__global int * v_sizes,
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
     v_s0[index] = this_id;
 
-    v_data[this_id].start_p = s2.intersect_p;
+    v_data[this_id].start_p = s2.intersect_p + 0.5f * final_dir;
     v_data[this_id].in_dir = final_dir;
 }
 
@@ -397,7 +378,7 @@ __kernel void s2_specular_run(__global int * v_sizes,
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
     v_s0[index] = this_id;
 
-    v_data[this_id].start_p = s2.intersect_p;
+    v_data[this_id].start_p = s2.intersect_p + 0.5f * reflection_dir;
     v_data[this_id].in_dir = reflection_dir;
 }
 
@@ -429,7 +410,7 @@ __kernel void s2_diffuse_run(__global int * v_sizes,
     v_s0[index] = this_id;
 
     v_data[this_id].strength = strength;
-    v_data[this_id].start_p = s2.intersect_p;
+    v_data[this_id].start_p = s2.intersect_p + 0.5f * p;
     v_data[this_id].in_dir = p;
 }
 
@@ -459,8 +440,8 @@ __kernel void s2_light_run(__global int * v_sizes,
     float3 pb = scene_points[light.y];
     float3 pc = scene_points[light.z];
 
-    float randx = randf(&rand_seed) + 0.5f; 
-    float randy = randf(&rand_seed) + 0.5f; 
+    float randx = randf(&rand_seed); 
+    float randy = randf(&rand_seed); 
     if(randx + randy > 1) {
         randx = 1 - randx;
         randy = 1 - randy;
@@ -474,7 +455,7 @@ __kernel void s2_light_run(__global int * v_sizes,
 
         v_s0[index] = this_id;
         v_data[this_id].strength = s2.strength * fabs(dot_);
-        v_data[this_id].start_p = s2.intersect_p;
+        v_data[this_id].start_p = s2.intersect_p + 0.5f * p;
         v_data[this_id].in_dir = p;
     }
 }

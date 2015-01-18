@@ -234,14 +234,14 @@ int KDTree::Node::debugPrint(int depth, int id) {
 
 KDTree::KDTree(std::string filename): Scene(filename) {
     this->root = std::make_unique<KDTree::Node>(this->points, this->geometries);
-    for(int i = 0 ; i < this->geometries.size() ; i += 1)
+    for(size_t i = 0 ; i < this->geometries.size() ; i += 1)
         this->root->geo_indexes.push_back(i);
     this->root->calcMinMaxVals();
     this->root->setBoxSize();
     this->root->split();
     this->root->removeEmptyNode();
 
-    this->root->debugPrint();
+    // this->root->debugPrint();
 }
 
 std::pair<std::vector<KDTreeNodeHeader>, std::vector<cl_int>>
@@ -261,7 +261,7 @@ std::pair<std::vector<KDTreeNodeHeader>, std::vector<cl_int>>
         std::vector<KDTreeNodeHeader> header_data;
         std::vector<cl_int> triangle_data;
 
-        for(int i = 0 ; i < nodes.size() ; i += 1) {
+        for(size_t i = 0 ; i < nodes.size() ; i += 1) {
             auto node = nodes[i];
             KDTreeNodeHeader header;
             header.data = -1;

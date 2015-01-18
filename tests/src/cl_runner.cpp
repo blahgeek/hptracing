@@ -23,16 +23,16 @@ using namespace hp;
     } while(0)
 
 TEST(CLRunner, run) {
-    auto scene = std::make_unique<KDTree>(std::string("teapot.obj"));
+    auto scene = std::make_unique<KDTree>(std::string("obj/teapot.obj"));
 
-    Vec _view_p(0, 0, -500);
+    Vec _view_p(250, 250, -1000);
     cl_float3 view_p;
     ASSIGN_F3(view_p, _view_p);
     std::vector<cl_float3> view_dir;
     // std::vector<Vec> view_dir;
     for(int i = 0 ; i < 1000 ; i += 1) {
         for(int j = 0 ; j < 1000 ; j += 1) {
-            Vec dir = Vec((float(i)/2-250)/2, (float(j)/2-250)/2, 0) - _view_p;
+            Vec dir = Vec((float(i)/2), (float(j)/2), 0) - _view_p;
             dir.normalize();
             cl_float3 x;
             ASSIGN_F3(x, dir);
