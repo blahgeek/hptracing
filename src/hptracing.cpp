@@ -26,6 +26,7 @@ int main(int argc, char const *argv[]) {
     parser.add_option("--view").dest("view").set_default("0,0,-500");
     parser.add_option("--rotate-x").dest("rotate-x").type("float").set_default(0.0);
     parser.add_option("--rotate-y").dest("rotate-y").type("float").set_default(0.0);
+    parser.add_option("-x", "--supersample").dest("supersample").action("store_true").set_default("0");
     parser.add_option("-s", "--sample").dest("sample").type("int").set_default(10);
     parser.add_option("-d", "--depth").dest("depth").type("int").set_default(6);
     parser.add_option("-o", "--output").dest("output").set_default("out.ppm");
@@ -57,16 +58,24 @@ int main(int argc, char const *argv[]) {
 
     std::vector<cl_float3> view_dirs;
 
+    bool supersample = options.get("supersample");
+
     int width = (int)options.get("width");
     int height = (int)options.get("height");
     for(int i = 0 ; i < width ; i += 1) {
         for(int j = 0 ; j < height ; j += 1) {
-            Vec dir = Vec(i - width / 2, j - height / 2, width * 2);
-            dir.normalize();
-            dir = rotate * dir;
-            cl_float3 x;
-            ASSIGN_F3(x, dir);
-            view_dirs.push_back(x);
+            for(int ii = 0 ; ii < (supersample?2:1) ; ii += 1) {
+                for(int jj = 0 ; jj < (supersample?2:1) ; jj += 1) {
+                    Vec dir = Vec(i - width / 2 + ii * 0.5, 
+                                  j - height / 2 + jj * 0.5, 
+                                  width * 2);
+                    dir.normalize();
+                    dir = rotate * dir;
+                    cl_float3 x;
+                    ASSIGN_F3(x, dir);
+                    view_dirs.push_back(x);
+                }
+            }
         }
     }
 
@@ -84,7 +93,14 @@ int main(int argc, char const *argv[]) {
     for(int y = height -1 ; y >= 0 ; y -= 1) {
         for(int x = 0 ; x < width ; x += 1) {
             for(int k = 0 ; k < 3 ; k += 1) {
-                auto val = runner->result[(x * height + y) * 3 + k];
+                float val = 0;
+                if(!supersample)
+                    val = runner->result[(x * height + y) * 3 + k];
+                else {
+                    for(int i = 0 ; i < 4 ; i += 1)
+                        val += runner->result[((x * height + y) * 4 + i) * 3 + k];
+                    val /= 4.0;
+                }
                 fout << int(255 * (1.0 - std::exp(-val))) << " ";
             }
         }
