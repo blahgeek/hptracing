@@ -251,6 +251,8 @@ __kernel void s1_run(__global int * v_sizes,
                      __global int * v_s2_diffuse,
                      __global int * v_s2_light,
                      __global float3 * scene_points,
+                     __global float3 * scene_normals,
+                     const int scene_normals_size,
                      __constant Material * v_materials,
                      __global long * v_seed) {
     int global_id = get_global_id(0);
@@ -264,9 +266,25 @@ __kernel void s1_run(__global int * v_sizes,
     float3 geo_c = scene_points[s1.geometry.z];
     Material mat = v_materials[s1.geometry.w];
 
-    float3 normal = normalize(cross(geo_b - geo_a, geo_c - geo_a));
-
     float3 intersect_p = s1.start_p + s1.intersect_number * s1.in_dir;
+
+    float3 normal;
+    if(scene_normals_size == 0) {
+        normal = normalize(cross(geo_b - geo_a, geo_c - geo_a));
+    } else {
+        float3 f1 = geo_a - intersect_p;
+        float3 f2 = geo_b - intersect_p;
+        float3 f3 = geo_c - intersect_p;
+        float area_all = length(cross(geo_b - geo_a, geo_c - geo_a));
+        float area1 = length(cross(f2, f3)) / area_all;
+        float area2 = length(cross(f1, f3)) / area_all;
+        float area3 = length(cross(f1, f2)) / area_all;
+        normal = area1 * scene_normals[s1.geometry.x] + 
+                 area2 * scene_normals[s1.geometry.y] +
+                 area3 * scene_normals[s1.geometry.z];
+    }
+
+
     float3 result = s1.strength * mat.ambient;
     result *= fabs(dot(normal, s1.in_dir));
 

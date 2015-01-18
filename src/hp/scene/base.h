@@ -26,6 +26,7 @@ namespace hp {
         std::vector<hp::Material> materials;
 
         std::vector<cl_float3> points;
+        std::vector<cl_float3> normals; // points normals
 
         std::vector<cl_int4> lights;
         std::vector<cl_int4> geometries;

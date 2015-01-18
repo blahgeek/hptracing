@@ -79,6 +79,11 @@ void TraceRunner::run() {
     cl::Buffer materials_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                              sizeof(Material) * scene->materials.size(),
                              scene->materials.data());
+    cl_int normals_size = scene->normals.size();
+    cl::Buffer normals_mem;
+    if(normals_size > 0)
+        normals_mem = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                 sizeof(cl_float3) * normals_size, scene->normals.data());
 
     // Result data
     cl::Buffer results_mem(context, CL_MEM_READ_WRITE,
@@ -196,8 +201,10 @@ void TraceRunner::run() {
             for(int i = 2 ; i < 6 ; i += 1)
                 kernel.setArg(i+2, stage_mem[i]);
             kernel.setArg(8, points_mem);
-            kernel.setArg(9, materials_mem);
-            kernel.setArg(10, rand_seed_mem);
+            kernel.setArg(9, normals_mem);
+            kernel.setArg(10, normals_size);
+            kernel.setArg(11, materials_mem);
+            kernel.setArg(12, rand_seed_mem);
             if(v_sizes[1])
                 ND_RANGE(queue, kernel, v_sizes[1]);
                 // queue.enqueueNDRangeKernel(kernel, 0, v_sizes[1], 256);

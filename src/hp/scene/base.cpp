@@ -67,6 +67,15 @@ Scene::Scene(std::string filename) {
             point.s[2] = shape.mesh.positions[i+2];
             this->points.push_back(point);
         }
+        if(shape.mesh.normals.size() == 0) 
+            hp_log("WARNING: No normal data found");
+        for(size_t i = 0 ; i < shape.mesh.normals.size() ; i += 3) {
+            cl_float3 normal;
+            normal.s[0] = shape.mesh.normals[i];
+            normal.s[1] = shape.mesh.normals[i+1];
+            normal.s[2] = shape.mesh.normals[i+2];
+            this->normals.push_back(normal);
+        }
         for(size_t i = 0 ; i < shape.mesh.indices.size() ; i += 3) {
             cl_int4 triangle;
             triangle.s[0] = shape.mesh.indices[i] + point_base_index;
