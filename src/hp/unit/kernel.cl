@@ -56,7 +56,7 @@ inline float3 randf3(long * seed) {
 #define GENERAL_THRESHOLD (1e-3f)
 
 inline float _box_intersect_dimension(float p0, float p, float s) {
-    if(p == 0) return -1;
+//    if(p == 0) return -1;
     return (s - p0) / p;
 }
 
@@ -102,12 +102,9 @@ bool _box_intersect(float3 box_start, float3 box_end, float3 start_p, float3 in_
     if(mins.s2 > maxs.s2) SWAP_F(mins.s2, maxs.s2);
 
     float max_of_mins = fmax(fmax(mins.x, mins.y), mins.z);
-    float min_of_maxs = maxs.s0;
+    float min_of_maxs = fmin(fmin(maxs.x, maxs.y), maxs.z);
 
-    if(min_of_maxs < 0 || (maxs.s1 >= 0 && maxs.s1 < min_of_maxs))
-        min_of_maxs = maxs.s1;
-    if(min_of_maxs < 0 || (maxs.s2 >= 0 && maxs.s2 < min_of_maxs))
-        min_of_maxs = maxs.s2;
+    if(min_of_maxs <= 0) return false;
     return max_of_mins <= min_of_maxs;
 }
 
@@ -190,8 +187,8 @@ __kernel void kdtree_intersect(__global int * v_sizes,
                                __global int * v_s1,
                                __global float3 * scene_points,
                                __global int4 * scene_mesh,
-                               __constant int * v_kd_leaf_data,
-                               __constant KDTreeNodeHeader * v_kd_node_header,
+                               __global int * v_kd_leaf_data,
+                               __global KDTreeNodeHeader * v_kd_node_header,
                                const int kd_node_size) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S0_SIZE_OFFSET]) return;
@@ -199,8 +196,8 @@ __kernel void kdtree_intersect(__global int * v_sizes,
     int this_id = v_s0[global_id];
     unit_data s0 = v_data[this_id];
 
-    int match_datas[256];
-    int match_data_size = 0;
+    int geo_id = -1;
+    float intersect_number = -42;
 
     int node_index = 0;
     int come_from_child = 0;
@@ -208,15 +205,27 @@ __kernel void kdtree_intersect(__global int * v_sizes,
         int goto_child = 0;
 
         KDTreeNodeHeader node = v_kd_node_header[node_index];
-        if(come_from_child == 0) {
-            if(_box_intersect(node.box_start, node.box_end, s0.start_p, s0.in_dir)) {
-                if(node.child < 0) {
-                    if(match_data_size < 256 && node.data >= 0)
-                        match_datas[match_data_size++] = node.data;
+        if(come_from_child == 0 && _box_intersect(node.box_start, node.box_end, s0.start_p, s0.in_dir)) {
+            if(node.child < 0) {
+                if(node.data >= 0) {
+                    __global int * data = v_kd_leaf_data + node.data;
+                    int data_size = data[0];
+                    for(int x = 0 ; x < data_size ; x += 1) {
+                        int triangle_id = data[1+x];
+                        int4 triangle = scene_mesh[triangle_id];
+                        float result = _single_intersect(s0.start_p, s0.in_dir,
+                                                         scene_points[triangle.x],
+                                                         scene_points[triangle.y],
+                                                         scene_points[triangle.z]);
+                        if(result > 0 && (intersect_number < 0 || result < intersect_number)) {
+                            intersect_number = result;
+                            geo_id = triangle_id;
+                        }
+                    }
                 }
-                else 
-                    goto_child = 1;
             }
+            else 
+                goto_child = 1;
         } 
 
         if(goto_child) {
@@ -232,26 +241,6 @@ __kernel void kdtree_intersect(__global int * v_sizes,
             } else {
                 // root
                 break;
-            }
-        }
-    }
-
-    int geo_id = -1;
-    float intersect_number = -42;
-
-    for(int i = 0 ; i < match_data_size ; i += 1) {
-        __constant int * data = v_kd_leaf_data + match_datas[i];
-        int data_size = data[0];
-        for(int x = 0 ; x < data_size ; x += 1) {
-            int triangle_id = data[1+x];
-            int4 triangle = scene_mesh[triangle_id];
-            float result = _single_intersect(s0.start_p, s0.in_dir,
-                                             scene_points[triangle.x],
-                                             scene_points[triangle.y],
-                                             scene_points[triangle.z]);
-            if(result > 0 && (intersect_number < 0 || result < intersect_number)) {
-                intersect_number = result;
-                geo_id = triangle_id;
             }
         }
     }

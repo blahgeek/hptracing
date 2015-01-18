@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-14
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-14
+* @Last Modified time: 2015-01-18
 */
 
 #ifndef __hp_scene_cl_kdtree_h__
@@ -25,7 +25,7 @@ namespace cl {
     public:
         KDTreeNode(std::vector<cl_float3> & points, std::vector<cl_int4> & geometries):
             points(points), geometries(geometries) {}
-        bool contain(cl_int4 geo);
+        bool contain(cl_int4 geo, int split_dimension);
         // if left == null && right == null -> this is leaf
         std::unique_ptr<KDTreeNode> left = nullptr;
         std::unique_ptr<KDTreeNode> right = nullptr;
@@ -47,7 +47,7 @@ namespace cl {
 
         void removeEmptyNode();
 
-        void debugPrint(int depth=0);
+        int debugPrint(int depth=0, int id = 0);
 
     };
 

@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-14
+* @Last Modified time: 2015-01-17
 */
 
 #include <iostream>
@@ -95,7 +95,7 @@ void cl::TraceRunner::run() {
     cl_mem s2_light_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
                                                    sizeof(cl_int) * view_dir.size(), nullptr);
 
-#define SAMPLES 100
+#define SAMPLES 10
     // Random seeds
     cl_long * random_seeds = new cl_long[view_dir.size()];
     for(int i = 0 ; i < view_dir.size() ; i += 1)

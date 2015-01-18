@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-14
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-17
+* @Last Modified time: 2015-01-18
 */
 
 #include <iostream>
@@ -88,16 +88,40 @@ std::pair<cl_float, cl_float> cl::KDTreeNode::findBestSplit(int dimension) {
     return std::make_pair(best_pos, best_cost);
 }
 
-bool cl::KDTreeNode::contain(cl_int4 geo) {
+bool cl::KDTreeNode::contain(cl_int4 geo, int split_dimension) {
+    cl_float3 start;
+    cl_float3 end;
     for(int i = 0 ; i < 3 ; i += 1) {
-        cl_float3 p = points[geo.s[i]];
-        bool contain_point = true;
-        for(int d = 0 ; d < 3 ; d += 1) {
-            if(p.s[d] < box_start.s[d] || p.s[d] > box_end.s[d])
-                contain_point = false;
-        }
-        if(contain_point) return true;
+        start.s[i] = fmin(fmin(points[geo.s[0]].s[i], 
+                                   points[geo.s[1]].s[i]),
+                              points[geo.s[2]].s[i]);
+        end.s[i] = fmax(fmax(points[geo.s[0]].s[i], 
+                                 points[geo.s[1]].s[i]),
+                            points[geo.s[2]].s[i]);
+        // cl_float3 p = points[geo.s[i]];
+        // bool contain_point = true;
+        // for(int d = 0 ; d < 3 ; d += 1) {
+        //     if(p.s[d] < box_start.s[d] || p.s[d] > box_end.s[d])
+        //         contain_point = false;
+        // }
+        // if(contain_point) return true;
     }
+    if(start.s[0] >= box_start.s[0] && start.s[0] <= box_end.s[0] &&
+       start.s[1] >= box_start.s[1] && start.s[1] <= box_end.s[1] &&
+       start.s[2] >= box_start.s[2] && start.s[2] <= box_end.s[2])
+        return true;
+    if(end.s[0] >= box_start.s[0] && end.s[0] <= box_end.s[0] &&
+       end.s[1] >= box_start.s[1] && end.s[1] <= box_end.s[1] &&
+       end.s[2] >= box_start.s[2] && end.s[2] <= box_end.s[2])
+        return true;
+    if(box_start.s[0] >= start.s[0] && box_start.s[0] <= end.s[0] &&
+       box_start.s[1] >= start.s[1] && box_start.s[1] <= end.s[1] &&
+       box_start.s[2] >= start.s[2] && box_start.s[2] <= end.s[2])
+        return true;
+    if(box_end.s[0] >= start.s[0] && box_end.s[0] <= end.s[0] &&
+       box_end.s[1] >= start.s[1] && box_end.s[1] <= end.s[1] &&
+       box_end.s[2] >= start.s[2] && box_end.s[2] <= end.s[2])
+        return true;
     return false;
 }
 
@@ -157,8 +181,15 @@ void cl::KDTreeNode::split() {
 
     for(auto & geo_index: geo_indexes) {
         auto geo = geometries[geo_index];
-        if(this->left->contain(geo)) this->left->geo_indexes.push_back(geo_index);
-        if(this->right->contain(geo)) this->right->geo_indexes.push_back(geo_index);
+        std::vector<cl_float3> this_points = {points[geo.s[0]], points[geo.s[1]], points[geo.s[2]]};
+        if(!std::all_of(this_points.begin(), this_points.end(), [&](const cl_float3 & p) ->bool {
+            return p.s[best_dimension] > best_pos[best_dimension];
+        })) this->left->geo_indexes.push_back(geo_index);
+        if(!std::all_of(this_points.begin(), this_points.end(), [&](const cl_float3 & p) ->bool {
+            return p.s[best_dimension] < best_pos[best_dimension];
+        })) this->right->geo_indexes.push_back(geo_index);
+        // if(this->left->contain(geo, best_dimension)) this->left->geo_indexes.push_back(geo_index);
+        // if(this->right->contain(geo, best_dimension)) this->right->geo_indexes.push_back(geo_index);
     }
     this->geo_indexes.clear();
 
@@ -211,21 +242,31 @@ void cl::KDTreeNode::removeEmptyNode() {
     }
 }
 
-void cl::KDTreeNode::debugPrint(int depth) {
+int cl::KDTreeNode::debugPrint(int depth, int id) {
     for(int i = 0 ; i < depth ; i += 1)
         fprintf(stderr, "  ");
+    fprintf(stderr, "ID %d", id++);
     fprintf(stderr, "(%f %f %f)->(%f %f %f) ",
            box_start.s[0], box_start.s[1], box_start.s[2],
            box_end.s[0], box_end.s[1], box_end.s[2]);
-    if(geo_indexes.size() != 0)
+    if(geo_indexes.size() != 0) {
         fprintf(stderr, " LEAF, size = %lu\n", geo_indexes.size());
+        for(auto & geo_id: geo_indexes) {
+            fprintf(stderr, "...");
+            for(int i = 0 ; i < depth ; i += 1)
+                fprintf(stderr, "  ");
+            fprintf(stderr, "Triangle %d %d %d\n", geometries[geo_id].s[0],
+                    geometries[geo_id].s[1], geometries[geo_id].s[2]);
+        }
+    }
     else {
         fprintf(stderr, "\n");
         if(left)
-            left->debugPrint(depth+1);
+            id = left->debugPrint(depth + 1, id);
         if(right)
-            right->debugPrint(depth+1);
+            id = right->debugPrint(depth + 1, id);
     }
+    return id;
 }
 
 cl::KDTree::KDTree(std::string filename): cl::Scene(filename) {
@@ -235,7 +276,7 @@ cl::KDTree::KDTree(std::string filename): cl::Scene(filename) {
     this->root->calcMinMaxVals();
     this->root->setBoxSize();
     this->root->split();
-    this->root->removeEmptyNode();
+    // this->root->removeEmptyNode();
 
     this->root->debugPrint();
 }
