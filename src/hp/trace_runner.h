@@ -28,11 +28,15 @@ namespace hp {
         std::vector<cl_float3> view_dir;
         cl_float3 view_p;
 
+        int sample, depth;
+
         std::vector<unit_data> unit_data_all;
     public:
         TraceRunner(std::unique_ptr<hp::KDTree> && scene,
                     std::vector<cl_float3> && view_dir,
-                    cl_float3 view_p);
+                    cl_float3 view_p,
+                    int sample = 10,
+                    int depth = 6);
 
         std::vector<cl_float> result;
         void run();

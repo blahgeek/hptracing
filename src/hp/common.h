@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-05
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-08
+* @Last Modified time: 2015-01-18
 */
 
 #ifndef __hp_common_h__
@@ -20,6 +20,13 @@
 #define PI 3.141592653589
 
 #define RAND_F() (Number(std::rand()) / Number(RAND_MAX) - 0.5)
+#define ASSIGN_F3(X, Y) \
+    do { \
+        (X).s[0] = (Y)[0]; \
+        (X).s[1] = (Y)[1]; \
+        (X).s[2] = (Y)[2]; \
+        (X).s[3] = 0; \
+    } while(0)
 
 namespace hp {
 

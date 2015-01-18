@@ -17,8 +17,9 @@ using namespace hp;
 
 TraceRunner::TraceRunner(std::unique_ptr<hp::KDTree> && scene,
                          std::vector<cl_float3> && view_dir,
-                         cl_float3 view_p) :
-scene(std::move(scene)), view_dir(std::move(view_dir)), view_p(view_p) {
+                         cl_float3 view_p, int sample, int depth) :
+scene(std::move(scene)), view_dir(std::move(view_dir)), view_p(view_p),
+sample(sample), depth(depth) {
     context = cl::Context(CL_DEVICE_TYPE_GPU);
     devices = context.getInfo<CL_CONTEXT_DEVICES>();
 
@@ -145,13 +146,11 @@ void TraceRunner::run() {
     queue.finish();
     auto intial_s1_size = v_sizes[1];
 
-#define SAMPLES 10
-
     uint64_t s0_time = 0;
     uint64_t s1_time = 0;
     uint64_t s2_time = 0;
 
-    for(size_t ii = 0 ; ii < SAMPLES ; ii += 1) {
+    for(size_t ii = 0 ; ii < this->sample ; ii += 1) {
 
         memset(v_sizes, 0, sizeof(v_sizes));
         v_sizes[1] = intial_s1_size;
@@ -161,8 +160,7 @@ void TraceRunner::run() {
         queue.enqueueCopyBuffer(stage_cache_mem, stage_mem[1], 0, 0, sizeof(cl_int) * unit_data_all.size());
         queue.finish();
 
-#define MAX_DEPTH 6
-        for(int i = 0 ; i < MAX_DEPTH ; i += 1) {
+        for(int i = 0 ; i < this->depth ; i += 1) {
             hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
 
             auto t0 = GetTimeStamp();
@@ -210,7 +208,7 @@ void TraceRunner::run() {
             hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
             queue.enqueueWriteBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
 
-            if(i == MAX_DEPTH - 1) break;
+            if(i == this->depth - 1) break;
 
             auto t2 = GetTimeStamp();
 
@@ -257,5 +255,5 @@ void TraceRunner::run() {
     queue.enqueueReadBuffer(results_mem, CL_TRUE, 0, sizeof(cl_float) * view_dir.size() * 3, result.data());
 
     for(size_t i = 0 ; i < result.size() ; i += 1)
-        result[i] /= float(SAMPLES);
+        result[i] /= float(this->sample);
 }

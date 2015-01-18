@@ -57,8 +57,8 @@ Scene::Scene(std::string filename) {
     }
 
     for(auto & shape: shapes) {
-        hp_log("Shape %s, indices: %ld, mats: %ld",
-               shape.name.c_str(), shape.mesh.indices.size(), shape.mesh.material_ids.size());
+        // hp_log("Shape %s, indices: %ld, mats: %ld",
+        //        shape.name.c_str(), shape.mesh.indices.size(), shape.mesh.material_ids.size());
         size_t point_base_index = this->points.size();
         for(size_t i = 0 ; i < shape.mesh.positions.size() ; i += 3) {
             cl_float3 point;
@@ -76,7 +76,7 @@ Scene::Scene(std::string filename) {
             this->geometries.push_back(triangle);
             this->registerGeometry(triangle);
 
-            hp_log("   Triangle: %d %d %d %d", triangle.s[0], triangle.s[1], triangle.s[2], triangle.s[3]);
+            // hp_log("   Triangle: %d %d %d %d", triangle.s[0], triangle.s[1], triangle.s[2], triangle.s[3]);
         }
     }
 
