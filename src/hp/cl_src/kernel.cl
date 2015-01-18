@@ -36,10 +36,13 @@ inline float randf(long * seed) {
 
 inline float3 randf3(long * seed) {
     float3 ret;
-    ret.x = randf(seed);
-    ret.y = randf(seed);
-    ret.z = randf(seed);
-    return normalize(ret);
+    float alpha = randf(seed);
+    float beta = randf(seed);
+    float cos_beta = cos(beta);
+    ret.x = cos_beta * cos(alpha);
+    ret.y = cos_beta * sin(alpha);
+    ret.z = sin(beta);
+    return ret;
 }
 
 #define GENERAL_THRESHOLD (1e-3f)
@@ -49,30 +52,6 @@ inline float _box_intersect_dimension(float p0, float p, float s) {
     return (s - p0) / p;
 }
 
-#define SWAP_F(X, Y) \
-    do { \
-        float __tmp = (X); \
-        (X) = (Y); \
-        (Y) = __tmp; \
-    } while(0) 
-
-//bool
-//intersection(box b, ray r)
-//{
-//  double tx1 = (b.min.x - r.x0.x)*r.n_inv.x;
-//  double tx2 = (b.max.x - r.x0.x)*r.n_inv.x;
-// 
-//  double tmin = min(tx1, tx2);
-//  double tmax = max(tx1, tx2);
-// 
-//  double ty1 = (b.min.y - r.x0.y)*r.n_inv.y;
-//  double ty2 = (b.max.y - r.x0.y)*r.n_inv.y;
-// 
-//  tmin = max(tmin, min(ty1, ty2));
-//  tmax = min(tmax, max(ty1, ty2));
-// 
-//  return tmax >= tmin;
-//}
 bool _box_intersect(float3 box_start, float3 box_end, float3 start_p, float3 in_dir) {
     // start_p inside box
     if(start_p.x >= box_start.x && start_p.x <= box_end.x &&
@@ -80,15 +59,20 @@ bool _box_intersect(float3 box_start, float3 box_end, float3 start_p, float3 in_
        start_p.z >= box_start.z && start_p.z <= box_end.z) return true;
     float3 mins, maxs;
 
-    mins.s0 = _box_intersect_dimension(start_p.x, in_dir.x, box_start.x);
-    maxs.s0 = _box_intersect_dimension(start_p.x, in_dir.x, box_end.x);
-    if(mins.s0 > maxs.s0) SWAP_F(mins.s0, maxs.s0);
-    mins.s1 = _box_intersect_dimension(start_p.y, in_dir.y, box_start.y);
-    maxs.s1 = _box_intersect_dimension(start_p.y, in_dir.y, box_end.y);
-    if(mins.s1 > maxs.s1) SWAP_F(mins.s1, maxs.s1);
-    mins.s2 = _box_intersect_dimension(start_p.z, in_dir.z, box_start.z);
-    maxs.s2 = _box_intersect_dimension(start_p.z, in_dir.z, box_end.z);
-    if(mins.s2 > maxs.s2) SWAP_F(mins.s2, maxs.s2);
+    float2 tmp;
+
+    tmp.x = _box_intersect_dimension(start_p.x, in_dir.x, box_start.x);
+    tmp.y = _box_intersect_dimension(start_p.x, in_dir.x, box_end.x);
+    mins.s0 = fmin(tmp.x, tmp.y);
+    maxs.s0 = fmax(tmp.x, tmp.y);
+    tmp.x = _box_intersect_dimension(start_p.y, in_dir.y, box_start.y);
+    tmp.y = _box_intersect_dimension(start_p.y, in_dir.y, box_end.y);
+    mins.s1 = fmin(tmp.x, tmp.y);
+    maxs.s1 = fmax(tmp.x, tmp.y);
+    tmp.x = _box_intersect_dimension(start_p.z, in_dir.z, box_start.z);
+    tmp.y = _box_intersect_dimension(start_p.z, in_dir.z, box_end.z);
+    mins.s2 = fmin(tmp.x, tmp.y);
+    maxs.s2 = fmax(tmp.x, tmp.y);
 
     float max_of_mins = fmax(fmax(mins.x, mins.y), mins.z);
     float min_of_maxs = fmin(fmin(maxs.x, maxs.y), maxs.z);
@@ -190,7 +174,7 @@ __kernel void kdtree_intersect(__global int * v_sizes,
 
     int node_index = 0;
     int come_from_child = 0;
-    while(node_index < kd_node_size) {
+    while(1) {
         int goto_child = 0;
 
         KDTreeNodeHeader node = v_kd_node_header[node_index];
@@ -309,24 +293,20 @@ __kernel void s1_run(__global int * v_sizes,
     result *= fabs(dot(normal, s1.in_dir));
 
     __global float * target = v_result + s1.orig_id * 3;
-    atomic_add_global(target, result.x);
-    atomic_add_global(target+1, result.y);
-    atomic_add_global(target+2, result.z);
+    // We only have one orig_id per loop, this shouldn't be problem
+    target[0] += result.x;
+    target[1] += result.y;
+    target[2] += result.z;
+//    atomic_add_global(target, result.x);
+//    atomic_add_global(target+1, result.y);
+//    atomic_add_global(target+2, result.z);
 
     v_data[this_id].intersect_p = intersect_p;
     v_data[this_id].normal = normal;
 
-    // russia roulette
-//    float specular_length = length(mat.specular);
-//    float diffuse_length = length(mat.diffuse);
-//    float refract_length = 1.0f - mat.dissolve;
-//    float sum = specular_length + diffuse_length + refract_length + 1e-4;
-//
-//    float specular_possibility = specular_length / sum;
 
     long rand_seed = v_seed[global_id] + global_id;
     float rand_num = randf(&rand_seed) + 0.5f;
-//    long rand_num = 0.f;
     v_seed[global_id] = rand_seed;
 
     if(rand_num < mat.specular_possibility) {
@@ -336,7 +316,6 @@ __kernel void s1_run(__global int * v_sizes,
         v_data[this_id].strength = s1.strength * mat.specular;
         return;
     }
-//    float refract_possibility = refract_length / sum + specular_possibility;
 
     if(rand_num < mat.refract_possibility) {
         // refract!
@@ -346,8 +325,6 @@ __kernel void s1_run(__global int * v_sizes,
         v_data[this_id].optical_density = mat.optical_density;
         return;
     }
-//    float diffuse_possibility = diffuse_length / 2.f / sum + refract_possibility;
-//    float diffuse_possibility = diffuse_length / sum + refract_possibility;
 
     if(rand_num < mat.diffuse_possibility) {
         // diffuse!
@@ -396,11 +373,8 @@ __kernel void s2_refract_run(__global int * v_sizes,
     }
 
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
-//    int new_id = atomic_inc(v_sizes + DATA_SIZE_OFFSET);
     v_s0[index] = this_id;
 
-//    v_data[new_id].orig_id = s2.orig_id;
-//    v_data[new_id].strength = s2.new_strength_refract;
     v_data[this_id].start_p = s2.intersect_p;
     v_data[this_id].in_dir = final_dir;
 }
@@ -421,11 +395,8 @@ __kernel void s2_specular_run(__global int * v_sizes,
     float3 reflection_dir = s2.in_dir - 2.0f * projection;
 
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
-//    int new_id = atomic_inc(v_sizes + DATA_SIZE_OFFSET);
     v_s0[index] = this_id;
 
-//    v_data[new_id].orig_id = s2.orig_id;
-//    v_data[new_id].strength = s2.new_strength_specular;
     v_data[this_id].start_p = s2.intersect_p;
     v_data[this_id].in_dir = reflection_dir;
 }
@@ -444,27 +415,22 @@ __kernel void s2_diffuse_run(__global int * v_sizes,
     bool dir = dot(s2.in_dir, s2.normal) < 0;
 
     long rand_seed = v_seed[global_id] + global_id;
-
-//    for(int i = 0 ; i < DIFFUSE_SAMPLE ; i += 1) {
-        float3 p = randf3(&rand_seed);
-        float dot_normal = dot(p, s2.normal);
-        if(dot_normal < 0) {
-            dot_normal = -dot_normal;
-            if(dir) p = -p;
-        }
-//        float3 strength = s2.new_strength_diffuse * dot_normal / convert_float(DIFFUSE_SAMPLE);
-        float3 strength = s2.strength * dot_normal;
-
-        int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
-//        int new_id = atomic_inc(v_sizes + DATA_SIZE_OFFSET);
-        v_s0[index] = this_id;
-
-//        v_data[new_id].orig_id = s2.orig_id;
-        v_data[this_id].strength = strength;
-        v_data[this_id].start_p = s2.intersect_p;
-        v_data[this_id].in_dir = p;
-//    }
     v_seed[global_id] = rand_seed;
+
+    float3 p = randf3(&rand_seed);
+    float dot_normal = dot(p, s2.normal);
+    if(dot_normal < 0) {
+        dot_normal = -dot_normal;
+        if(dir) p = -p;
+    }
+    float3 strength = s2.strength * dot_normal;
+
+    int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
+    v_s0[index] = this_id;
+
+    v_data[this_id].strength = strength;
+    v_data[this_id].start_p = s2.intersect_p;
+    v_data[this_id].in_dir = p;
 }
 
 __kernel void s2_light_run(__global int * v_sizes,
@@ -484,36 +450,31 @@ __kernel void s2_light_run(__global int * v_sizes,
     bool dir = dot(s2.in_dir, s2.normal) < 0;
 
     long rand_seed = v_seed[global_id] + global_id;
-
-//    for(int i = 0 ; i < LIGHT_SAMPLE ; i += 1) {
-        // random ray to light!
-        int rand_light_index = rand(&rand_seed) % v_lights_size;
-        int4 light = v_lights[rand_light_index];
-
-        float3 pa = scene_points[light.x];
-        float3 pb = scene_points[light.y];
-        float3 pc = scene_points[light.z];
-
-        float randx = randf(&rand_seed) + 0.5f; 
-        float randy = randf(&rand_seed) + 0.5f; 
-        if(randx + randy > 1) {
-            randx = 1 - randx;
-            randy = 1 - randy;
-        }
-        float3 point = pa + randx * (pb - pa) + randy * (pc - pa);
-        float3 p = normalize(point - s2.intersect_p);
-
-        float dot_ = dot(p, s2.normal);
-        if((dot_ > 0) == dir) {
-            int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
-//            int new_id = atomic_inc(v_sizes + DATA_SIZE_OFFSET);
-
-            v_s0[index] = this_id;
-//            v_data[new_id].orig_id = s2.orig_id;
-            v_data[this_id].strength = s2.strength * fabs(dot_);
-            v_data[this_id].start_p = s2.intersect_p;
-            v_data[this_id].in_dir = p;
-        }
-//    }
     v_seed[global_id] = rand_seed;
+
+    int rand_light_index = rand(&rand_seed) % v_lights_size;
+    int4 light = v_lights[rand_light_index];
+
+    float3 pa = scene_points[light.x];
+    float3 pb = scene_points[light.y];
+    float3 pc = scene_points[light.z];
+
+    float randx = randf(&rand_seed) + 0.5f; 
+    float randy = randf(&rand_seed) + 0.5f; 
+    if(randx + randy > 1) {
+        randx = 1 - randx;
+        randy = 1 - randy;
+    }
+    float3 point = pa + randx * (pb - pa) + randy * (pc - pa);
+    float3 p = normalize(point - s2.intersect_p);
+
+    float dot_ = dot(p, s2.normal);
+    if((dot_ > 0) == dir) {
+        int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
+
+        v_s0[index] = this_id;
+        v_data[this_id].strength = s2.strength * fabs(dot_);
+        v_data[this_id].start_p = s2.intersect_p;
+        v_data[this_id].in_dir = p;
+    }
 }
