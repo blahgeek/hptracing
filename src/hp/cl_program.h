@@ -2,13 +2,13 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-12
+* @Last Modified time: 2015-01-18
 */
 
 #ifndef __hp_cl_program_h__
 #define __hp_cl_program_h__ value
 
-#include "./unit/types.h"
+#include "./cl_src/types.h"
 
 namespace hp {
 

@@ -11,7 +11,7 @@
 
 using namespace hp;
 
-std::pair<cl_float, cl_float> cl::KDTreeNode::triangleMinMax(cl_int4 geo, int dimension) {
+std::pair<cl_float, cl_float> KDTree::Node::triangleMinMax(cl_int4 geo, int dimension) {
     cl_float val[3];
     for(int i = 0 ; i < 3 ; i += 1)
         val[i] = points[geo.s[i]].s[dimension];
@@ -20,7 +20,7 @@ std::pair<cl_float, cl_float> cl::KDTreeNode::triangleMinMax(cl_int4 geo, int di
     return std::make_pair(min, max);
 }
 
-void cl::KDTreeNode::calcMinMaxVals() {
+void KDTree::Node::calcMinMaxVals() {
     for(int d = 0 ; d < 3 ; d += 1) {
         for(auto & geo_index: geo_indexes) {
             auto geo = geometries[geo_index];
@@ -33,7 +33,7 @@ void cl::KDTreeNode::calcMinMaxVals() {
     }
 }
 
-void cl::KDTreeNode::setBoxSize() {
+void KDTree::Node::setBoxSize() {
     for(int d = 0 ; d < 3 ; d += 1) {
         box_start.s[d] = min_vals[d].front() - 1e-3f;
         box_end.s[d] = max_vals[d].back() + 1e-3f;
@@ -44,7 +44,7 @@ void cl::KDTreeNode::setBoxSize() {
 #define TRIANGLE_INTERSECT_COST 3.f
 
 
-std::pair<cl_float, cl_float> cl::KDTreeNode::findBestSplit(int dimension) {
+std::pair<cl_float, cl_float> KDTree::Node::findBestSplit(int dimension) {
     std::vector<cl_float> all_vals(geo_indexes.size() * 2);
     memcpy(all_vals.data(), min_vals[dimension].data(), geo_indexes.size() * sizeof(cl_float));
     memcpy(all_vals.data() + geo_indexes.size(), 
@@ -88,46 +88,9 @@ std::pair<cl_float, cl_float> cl::KDTreeNode::findBestSplit(int dimension) {
     return std::make_pair(best_pos, best_cost);
 }
 
-bool cl::KDTreeNode::contain(cl_int4 geo, int split_dimension) {
-    cl_float3 start;
-    cl_float3 end;
-    for(int i = 0 ; i < 3 ; i += 1) {
-        start.s[i] = fmin(fmin(points[geo.s[0]].s[i], 
-                                   points[geo.s[1]].s[i]),
-                              points[geo.s[2]].s[i]);
-        end.s[i] = fmax(fmax(points[geo.s[0]].s[i], 
-                                 points[geo.s[1]].s[i]),
-                            points[geo.s[2]].s[i]);
-        // cl_float3 p = points[geo.s[i]];
-        // bool contain_point = true;
-        // for(int d = 0 ; d < 3 ; d += 1) {
-        //     if(p.s[d] < box_start.s[d] || p.s[d] > box_end.s[d])
-        //         contain_point = false;
-        // }
-        // if(contain_point) return true;
-    }
-    if(start.s[0] >= box_start.s[0] && start.s[0] <= box_end.s[0] &&
-       start.s[1] >= box_start.s[1] && start.s[1] <= box_end.s[1] &&
-       start.s[2] >= box_start.s[2] && start.s[2] <= box_end.s[2])
-        return true;
-    if(end.s[0] >= box_start.s[0] && end.s[0] <= box_end.s[0] &&
-       end.s[1] >= box_start.s[1] && end.s[1] <= box_end.s[1] &&
-       end.s[2] >= box_start.s[2] && end.s[2] <= box_end.s[2])
-        return true;
-    if(box_start.s[0] >= start.s[0] && box_start.s[0] <= end.s[0] &&
-       box_start.s[1] >= start.s[1] && box_start.s[1] <= end.s[1] &&
-       box_start.s[2] >= start.s[2] && box_start.s[2] <= end.s[2])
-        return true;
-    if(box_end.s[0] >= start.s[0] && box_end.s[0] <= end.s[0] &&
-       box_end.s[1] >= start.s[1] && box_end.s[1] <= end.s[1] &&
-       box_end.s[2] >= start.s[2] && box_end.s[2] <= end.s[2])
-        return true;
-    return false;
-}
-
 #define LEAF_GEOMETRIES 5
 
-void cl::KDTreeNode::split() {
+void KDTree::Node::split() {
     // hp_log("I'm node (%f %f %f)->(%f %f %f) with %lu triangles (this=%08x)",
     //        box_start.s[0], box_start.s[1], box_start.s[2],
     //        box_end.s[0], box_end.s[1], box_end.s[2],
@@ -163,8 +126,8 @@ void cl::KDTreeNode::split() {
         return;
     }
 
-    this->left = std::make_unique<KDTreeNode>(points, geometries);
-    this->right = std::make_unique<KDTreeNode>(points, geometries);
+    this->left = std::make_unique<KDTree::Node>(points, geometries);
+    this->right = std::make_unique<KDTree::Node>(points, geometries);
     this->left->parent = this->right->parent = this;
     this->left->box_start = this->right->box_start = this->box_start;
     this->left->box_end = this->right->box_end = this->box_end;
@@ -205,7 +168,7 @@ void cl::KDTreeNode::split() {
     this->right->split();
 }
 
-void cl::KDTreeNode::removeEmptyNode() {
+void KDTree::Node::removeEmptyNode() {
     if(left == nullptr && right == nullptr) return;
     left->removeEmptyNode();
     right->removeEmptyNode();
@@ -216,7 +179,7 @@ void cl::KDTreeNode::removeEmptyNode() {
         this->geo_indexes = right->geo_indexes;
         this->left = std::move(right->left);
         hp_assert(right->left == nullptr);
-        std::unique_ptr<KDTreeNode> tmp = std::move(right->right);
+        std::unique_ptr<KDTree::Node> tmp = std::move(right->right);
         hp_assert(right->right == nullptr);
         this->right = std::move(tmp);
         if(this->right)
@@ -231,7 +194,7 @@ void cl::KDTreeNode::removeEmptyNode() {
         this->geo_indexes = left->geo_indexes;
         this->right = std::move(left->right);
         hp_assert(left->right == nullptr);
-        std::unique_ptr<KDTreeNode> tmp = std::move(left->left);
+        std::unique_ptr<KDTree::Node> tmp = std::move(left->left);
         hp_assert(left->left == nullptr);
         this->left = std::move(tmp);
         if(this->right)
@@ -242,7 +205,7 @@ void cl::KDTreeNode::removeEmptyNode() {
     }
 }
 
-int cl::KDTreeNode::debugPrint(int depth, int id) {
+int KDTree::Node::debugPrint(int depth, int id) {
     for(int i = 0 ; i < depth ; i += 1)
         fprintf(stderr, "  ");
     fprintf(stderr, "ID %d", id++);
@@ -269,25 +232,25 @@ int cl::KDTreeNode::debugPrint(int depth, int id) {
     return id;
 }
 
-cl::KDTree::KDTree(std::string filename): cl::Scene(filename) {
-    this->root = std::make_unique<KDTreeNode>(this->points, this->geometries);
+KDTree::KDTree(std::string filename): Scene(filename) {
+    this->root = std::make_unique<KDTree::Node>(this->points, this->geometries);
     for(int i = 0 ; i < this->geometries.size() ; i += 1)
         this->root->geo_indexes.push_back(i);
     this->root->calcMinMaxVals();
     this->root->setBoxSize();
     this->root->split();
-    // this->root->removeEmptyNode();
+    this->root->removeEmptyNode();
 
     this->root->debugPrint();
 }
 
-std::pair<std::vector<cl::KDTreeNodeHeader>, std::vector<cl_int>>
-    cl::KDTree::getData() {
+std::pair<std::vector<KDTreeNodeHeader>, std::vector<cl_int>>
+    KDTree::getData() {
 
-        std::vector<KDTreeNode *> nodes;
-        std::map<KDTreeNode *, int> nodes_map;
-        std::function<void(KDTreeNode * node)> walk;
-        walk = [&](KDTreeNode * node) {
+        std::vector<KDTree::Node *> nodes;
+        std::map<KDTree::Node *, int> nodes_map;
+        std::function<void(KDTree::Node * node)> walk;
+        walk = [&](KDTree::Node * node) {
             nodes_map[node] = nodes.size();
             nodes.push_back(node);
             if(node->left) walk(node->left.get());
@@ -295,7 +258,7 @@ std::pair<std::vector<cl::KDTreeNodeHeader>, std::vector<cl_int>>
         };
         walk(this->root.get());
 
-        std::vector<cl::KDTreeNodeHeader> header_data;
+        std::vector<KDTreeNodeHeader> header_data;
         std::vector<cl_int> triangle_data;
 
         for(int i = 0 ; i < nodes.size() ; i += 1) {

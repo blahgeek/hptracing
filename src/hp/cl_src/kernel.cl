@@ -42,17 +42,6 @@ inline float3 randf3(long * seed) {
     return normalize(ret);
 }
 
-//#define DIFFICULTY 7
-//
-//#define DIFFUSE_SAMPLE (16 * DIFFICULTY)
-//#define LIGHT_SAMPLE (2 * DIFFICULTY)
-//
-//#define DIFFUSE_SAMPLE_DIV (2 * DIFFICULTY)
-//
-//#define GENERAL_THRESHOLD (5e-3f / convert_float(DIFFICULTY))
-//
-//#define LIGHT_SAMPLE_THRESHOLD (1.0f / DIFFUSE_SAMPLE_DIV / 2.0f)
-//#define DIFFUSE_SAMPLE_THRESHOLD (1.0f / DIFFUSE_SAMPLE_DIV * 1.5f)
 #define GENERAL_THRESHOLD (1e-3f)
 
 inline float _box_intersect_dimension(float p0, float p, float s) {
@@ -373,39 +362,6 @@ __kernel void s1_run(__global int * v_sizes,
     v_s2_light[index] = this_id;
     v_data[this_id].strength = s1.strength * mat.diffuse;
 
-//    // refract
-//    float3 new_strength = s1.strength * (1.0f - mat.dissolve);
-//    if(length(new_strength) > GENERAL_THRESHOLD) {
-//        int index = atomic_inc(v_sizes + S2_REFRACT_SIZE_OFFSET);
-//        v_s2_refract[index] = this_id;
-//        v_data[this_id].new_strength_refract = new_strength;
-//        v_data[this_id].optical_density = mat.optical_density;
-//    }
-
-//    // specular
-//    new_strength = s1.strength * mat.specular;
-//    if(length(new_strength) > GENERAL_THRESHOLD) {
-//        int index = atomic_inc(v_sizes + S2_SPECULAR_SIZE_OFFSET);
-//        v_s2_specular[index] = this_id;
-//        v_data[this_id].new_strength_specular = new_strength;
-//    }
-
-//    // diffuse
-//    new_strength = s1.strength * mat.diffuse;
-//    float new_strength_length = length(new_strength);
-//    if(new_strength_length > DIFFUSE_SAMPLE_THRESHOLD) {
-//        int index = atomic_inc(v_sizes + S2_DIFFUSE_SIZE_OFFSET);
-//        v_s2_diffuse[index] = this_id;
-//        v_data[this_id].new_strength_diffuse = new_strength;
-//    }
-
-//    // light, reuse diffuse strength
-//    new_strength /= convert_float(DIFFUSE_SAMPLE);
-//    if(new_strength_length > LIGHT_SAMPLE_THRESHOLD) {
-//        int index = atomic_inc(v_sizes + S2_LIGHT_SIZE_OFFSET);
-//        v_s2_light[index] = this_id;
-//        v_data[this_id].new_strength_light = new_strength;
-//    }
 }
 
 __kernel void s2_refract_run(__global int * v_sizes,

@@ -13,11 +13,6 @@ typedef struct {
     float intersect_number;
     float3 intersect_p, normal;
     float optical_density;
-//
-//    float3 new_strength_refract;
-//    float3 new_strength_specular;
-//    float3 new_strength_diffuse;
-//    float3 new_strength_light;
 } unit_data;
 
 typedef struct {

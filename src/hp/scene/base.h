@@ -1,63 +1,40 @@
 /* 
 * @Author: BlahGeek
-* @Date:   2015-01-07
+* @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-08
+* @Last Modified time: 2015-01-18
 */
 
-#ifndef __hp_scene_base_h__
-#define __hp_scene_base_h__ value
+#ifndef __hp_scene_cl_base_h__
+#define __hp_scene_cl_base_h__ value
 
+#include "../cl_src/types.h"
 #include "../common.h"
-#include "../geometry/base.h"
-#include "../material.h"
-
-#include "../../objloader/tiny_obj_loader.h"
-
 #include <vector>
-#include <map>
-#include <memory>
-#include <tuple>
-
-using hp::Geometry;
-using hp::Material;
-using hp::Vec;
+#include <string>
 
 namespace hp {
 
-class Scene {
-private:
-    std::vector<Material> materials;
-    std::map<Number, int> lights;
+    class Scene {
+    protected:
+        hp::Number total_light_val = 0;
+        std::map<hp::Number, int> lights_map;
+        // computes lights
+        void registerGeometry(cl_int4 triangle);
+        void finishRegister();
+    public:
+        std::vector<hp::Material> materials;
 
-    Number total_light_val = 0;
+        std::vector<cl_float3> points;
 
-protected:
-    std::vector<std::pair<std::unique_ptr<Geometry>, int>> geometries;
+        std::vector<cl_int4> lights;
+        std::vector<cl_int4> geometries;
 
-public:
-    Scene(std::string filename);
-    Scene(int num_geo, int num_mat);
-    virtual ~Scene(){}
+        Scene(std::string filename);
 
-    Vec randomRayToLight(const Vec & start_p);
+    };
 
-    int addMaterial(Material mat) {
-        auto ret = materials.size();
-        materials.push_back(mat);
-        return ret;
-    }
-
-    virtual void addGeometry(std::unique_ptr<Geometry> && geo, int mat);
-    
-    // void setMaterial(int n, Material mat);
-    // virtual void setGeometry(int n, std::unique_ptr<Geometry> && geo, int mat_id);
-
-    virtual std::tuple<Number, Geometry *, Material *> 
-        intersect(const Vec & start_p, const Vec & dir);
-
-};
-    
 }
+
 
 #endif

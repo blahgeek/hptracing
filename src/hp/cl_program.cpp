@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-14
+* @Last Modified time: 2015-01-18
 */
 
 #include "./cl_program.h"
@@ -20,7 +20,7 @@ static std::string read_file(std::string filename) {
 void hp::CLProgram::enqueueNDKernel(cl_kernel & kernel, size_t size) {
     if(size == 0) return;
 
-    size_t local = 32;
+    size_t local = 256;
     // auto err = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
     // hp_assert(err == CL_SUCCESS);
 
@@ -31,8 +31,8 @@ void hp::CLProgram::enqueueNDKernel(cl_kernel & kernel, size_t size) {
 }
 
 hp::CLProgram::CLProgram() {
-    std::string source = read_file("src/hp/unit/types.h.cl") + 
-                         read_file("src/hp/unit/kernel.cl");
+    std::string source = read_file("src/hp/cl_src/types.h.cl") + 
+                         read_file("src/hp/cl_src/kernel.cl");
 
     auto err = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 1, &device_id, NULL);
     hp_assert(err == CL_SUCCESS);

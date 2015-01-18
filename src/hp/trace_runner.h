@@ -1,49 +1,38 @@
 /* 
 * @Author: BlahGeek
-* @Date:   2015-01-07
+* @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-08
+* @Last Modified time: 2015-01-18
 */
 
-#ifndef __hp_trace_runner_h__
-#define __hp_trace_runner_h__ value
+#ifndef __hp_trace_runner_cl_h__
+#define __hp_trace_runner_cl_h__ value
 
-#include "./trace_unit.h"
-#include <set>
+#include "./cl_program.h"
+#include "./scene/kdtree.h"
+#include "./cl_program.h"
+#include <vector>
+#include <memory>
 
 namespace hp {
 
-class TraceRunner {
+    class TraceRunner {
+    protected:
+        std::unique_ptr<hp::KDTree> scene;
+        std::unique_ptr<hp::CLProgram> cl_program;
+        std::vector<cl_float3> view_dir;
+        cl_float3 view_p;
+    public:
+        TraceRunner(std::unique_ptr<hp::KDTree> && scene,
+                    std::vector<cl_float3> && view_dir,
+                    cl_float3 view_p) :
+        scene(std::move(scene)), view_dir(std::move(view_dir)), view_p(view_p) {
+            cl_program = std::make_unique<hp::CLProgram>();
+        }
 
-protected:
-    std::unique_ptr<Scene> scene;
-
-    std::vector<Unit::S0> s0;
-    std::vector<Unit::S1> s1;
-    std::vector<Unit::S2_specular> s2_specular;
-    std::vector<Unit::S2_diffuse> s2_diffuse;
-    std::vector<Unit::S2_refract> s2_refract;
-    std::vector<Unit::S2_light> s2_light;
-    // std::vector<TraceUnit> units;
-    // std::set<int> state0, state1, state2;
-
-    std::vector<Vec> view_dir;
-    Vec view_p;
-
-    void log(int i);
-
-public:
-    TraceRunner(std::unique_ptr<Scene> && scene, 
-                std::vector<Vec> && view_dir,
-                Vec view_p): 
-    scene(std::move(scene)), view_dir(view_dir), view_p(view_p) {}
-
-    std::vector<Color> result;
-
-    void run();
-
-};
+        std::vector<cl_float> result;
+        void run();
+    };
 
 }
-
 #endif

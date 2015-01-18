@@ -11,14 +11,13 @@
 #include <memory>
 #include <algorithm>
 #include "./hp/geometry/triangle.h"
-#include "./hp/scene_cl/base.h"
-#include "./hp/scene_cl/uniform_box.h"
-#include "./hp/scene_cl/kdtree.h"
+#include "./hp/scene/base.h"
+#include "./hp/scene/kdtree.h"
 
 using namespace std;
 
 TEST(SceneCLTest, load) {
-    auto scene = std::make_unique<hp::cl::Scene>(std::string("obj/cornell_box.obj"));
+    auto scene = std::make_unique<hp::Scene>(std::string("obj/cornell_box.obj"));
     EXPECT_EQ(scene->lights.size(), 256);
     auto half_count = std::count_if(scene->lights.begin(), scene->lights.end(),
                                    [](const cl_int4 & x)->bool {
@@ -27,13 +26,8 @@ TEST(SceneCLTest, load) {
     EXPECT_EQ(half_count, 127);
 }
 
-TEST(SceneCLTest, uniform_box_load) {
-    auto scene = std::make_unique<hp::cl::UniformBox>(std::string("obj/cornell_box.obj"));
-    EXPECT_TRUE(bool(scene));
-}
-
 TEST(SceneCLTest, kdtree_load) {
-    auto scene = std::make_unique<hp::cl::KDTree>(std::string("obj/cornell_box.obj"));
+    auto scene = std::make_unique<hp::KDTree>(std::string("obj/cornell_box.obj"));
     EXPECT_TRUE(bool(scene));
     scene->getData();
 }
@@ -121,7 +115,7 @@ TEST(SceneCLTest, box_intersect) {
     EXPECT_TRUE(_box_intersect(box_start, box_end, start_p, dir));
 }
 
-std::pair<float, float> kdtree_intersect_test(hp::cl::KDTree * scene, hp::Vec start_p, hp::Vec in_dir) {
+std::pair<float, float> kdtree_intersect_test(hp::KDTree * scene, hp::Vec start_p, hp::Vec in_dir) {
     // auto start_p = hp::Vec(20, 34, -1000);
     // auto in_dir = hp::Vec(0, 0, 1);
 
@@ -216,7 +210,7 @@ std::pair<float, float> kdtree_intersect_test(hp::cl::KDTree * scene, hp::Vec st
 }
 
 TEST(SceneCLTest, kdtree_single) {
-    auto scene = std::make_unique<hp::cl::KDTree>(std::string("teapot.obj"));
+    auto scene = std::make_unique<hp::KDTree>(std::string("teapot.obj"));
     hp::Vec view_p(-35.000000, -20.000000, -500.000000);
     hp::Vec dir(0, 0, 1);
     auto ret = kdtree_intersect_test(scene.get(), view_p, dir);
@@ -224,7 +218,7 @@ TEST(SceneCLTest, kdtree_single) {
 }
 
 TEST(SceneCLTest, kdtree_intersect) {
-    auto scene = std::make_unique<hp::cl::KDTree>(std::string("teapot.obj"));
+    auto scene = std::make_unique<hp::KDTree>(std::string("teapot.obj"));
     for(int i = 0 ; i < 100 ; i += 1) {
         for(int j = 0 ; j < 100 ; j += 1) {
             hp::Vec view_p(i-50, j-50, -500);

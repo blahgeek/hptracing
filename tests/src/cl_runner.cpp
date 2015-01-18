@@ -2,16 +2,15 @@
 * @Author: BlahGeek
 * @Date:   2015-01-07
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-17
+* @Last Modified time: 2015-01-18
 */
 
 #include <iostream>
 #include <fstream>
 #include <gtest/gtest.h>
 
-#include "hp/trace_runner_cl.h"
-#include "hp/scene_cl/base.h"
-#include "hp/scene_cl/kdtree.h"
+#include "hp/trace_runner.h"
+#include "hp/scene/kdtree.h"
 
 using namespace hp;
 
@@ -24,7 +23,7 @@ using namespace hp;
     } while(0)
 
 TEST(CLRunner, run) {
-    auto scene = std::make_unique<cl::KDTree>(std::string("teapot.obj"));
+    auto scene = std::make_unique<KDTree>(std::string("teapot.obj"));
 
     Vec _view_p(0, 0, -500);
     cl_float3 view_p;
@@ -41,9 +40,9 @@ TEST(CLRunner, run) {
         }
     }
 
-    auto runner = std::make_unique<cl::TraceRunner>(std::move(scene),
-                                                    std::move(view_dir),
-                                                    view_p);
+    auto runner = std::make_unique<TraceRunner>(std::move(scene),
+                                                std::move(view_dir),
+                                                view_p);
     runner->run();
 
     std::ofstream fout("out.ppm");
