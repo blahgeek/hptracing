@@ -11,8 +11,43 @@
 #include <algorithm>
 #include <ctime>
 #include <sys/time.h>
+#include <fstream>
 
 using namespace hp;
+
+TraceRunner::TraceRunner(std::unique_ptr<hp::KDTree> && scene,
+                         std::vector<cl_float3> && view_dir,
+                         cl_float3 view_p) :
+scene(std::move(scene)), view_dir(std::move(view_dir)), view_p(view_p) {
+    context = cl::Context(CL_DEVICE_TYPE_GPU);
+    devices = context.getInfo<CL_CONTEXT_DEVICES>();
+
+    auto read_source = [&](const char * filename) {
+        std::ifstream t(filename);
+        std::string str((std::istreambuf_iterator<char>(t)),
+                        std::istreambuf_iterator<char>());
+        return str;
+    };
+    auto sources = read_source("src/hp/cl_src/types.h.cl") + read_source("src/hp/cl_src/kernel.cl");
+
+    program = cl::Program(context, sources);
+    program.build(devices);
+
+    std::srand(std::time(0));
+
+    for(size_t i = 0 ; i < this->view_dir.size() ; i += 1) {
+        unit_data x;
+        x.orig_id = i;
+        x.strength.s[0] = x.strength.s[1] = x.strength.s[2] = 1;
+        x.strength.s[3] = 0;
+        x.start_p = view_p;
+        x.in_dir = this->view_dir[i];
+        unit_data_all.push_back(x);
+    }
+
+    // Aha! magic!
+    // std::random_shuffle(unit_data_all.begin(), unit_data_all.end());
+}
 
 uint64_t GetTimeStamp() {
     struct timeval tv;
@@ -21,259 +56,166 @@ uint64_t GetTimeStamp() {
 }
 
 void TraceRunner::run() {
-    std::srand(std::time(0));
-
-    std::vector<unit_data> s0_all;
-    for(size_t i = 0 ; i < view_dir.size() ; i += 1) {
-        unit_data x;
-        x.orig_id = i;
-        x.strength.s[0] = x.strength.s[1] = x.strength.s[2] = 1;
-        x.strength.s[3] = 0;
-        x.start_p = view_p;
-        x.in_dir = view_dir[i];
-        s0_all.push_back(x);
-    }
-    // Aha! magic!
-    // std::random_shuffle(s0_all.begin(), s0_all.end());
+    cl::CommandQueue queue = cl::CommandQueue(context, devices[0]);
 
     auto kdtree_data = scene->getData();
 
     // Scene related data, readonly
-    cl_mem points_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                                 sizeof(cl_float3) * scene->points.size(),
-                                                 scene->points.data());
-    // cl_int geometries_size = scene->geometries.size();
-    cl_mem kdtree_node_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                                      sizeof(KDTreeNodeHeader) * kdtree_data.first.size(),
-                                                      kdtree_data.first.data());
+    cl::Buffer points_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                          sizeof(cl_float3) * scene->points.size(), scene->points.data());
+    cl::Buffer kdtree_node_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                               sizeof(KDTreeNodeHeader) * kdtree_data.first.size(), kdtree_data.first.data());
     cl_int kdtree_node_size = kdtree_data.first.size();
-    cl_mem kdtree_leaf_data_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                                           sizeof(cl_int) * kdtree_data.second.size(),
-                                                           kdtree_data.second.data());
-    // geometries_size /= 10;
-    cl_mem geometries_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                                     sizeof(cl_int4) * scene->geometries.size(),
-                                                     scene->geometries.data());
+    cl::Buffer kdtree_leaf_data_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                    sizeof(cl_int) * kdtree_data.second.size(), kdtree_data.second.data());
+    cl::Buffer geometries_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                              sizeof(cl_int4) * scene->geometries.size(),
+                              scene->geometries.data());
     cl_int lights_size = scene->lights.size();
-    cl_mem lights_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                                 sizeof(cl_int4) * scene->lights.size(),
-                                                 scene->lights.data());
-    cl_mem materials_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                                    sizeof(Material) * scene->materials.size(),
-                                                    scene->materials.data());
+    cl::Buffer lights_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                          sizeof(cl_int4) * scene->lights.size(), scene->lights.data());
+
+    cl::Buffer materials_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                             sizeof(Material) * scene->materials.size(),
+                             scene->materials.data());
 
     // Result data
-    cl_mem results_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
-                                                  sizeof(cl_float) * view_dir.size() * 3, nullptr);
+    cl::Buffer results_mem(context, CL_MEM_READ_WRITE,
+                           sizeof(cl_float) * view_dir.size() * 3, nullptr);
 
     // Units...
-    cl_mem v_sizes_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
-                                                  sizeof(cl_int) * 10, nullptr);
+    cl::Buffer v_sizes_mem(context, CL_MEM_READ_WRITE,
+                           sizeof(cl_int) * 10, nullptr);
 
     cl_int * intial_s0 = new cl_int[view_dir.size()];
-    for(int i = 0 ; i < view_dir.size() ; i += 1)
+    for(size_t i = 0 ; i < view_dir.size() ; i += 1)
         intial_s0[i] = i;
 
-    // #define UNIT_DATA_SIZE 1000000
-    cl_mem v_data_initial_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
-                                                         sizeof(unit_data) * view_dir.size(), s0_all.data());
-    cl_mem s0_initial_mem = cl_program->createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
-                                                     sizeof(cl_int) * view_dir.size(), intial_s0);
+    cl::Buffer s0_initial_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
+                              sizeof(cl_int) * view_dir.size(), intial_s0);
+    cl::Buffer v_data_initial_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
+                                  sizeof(unit_data) * unit_data_all.size(), 
+                                  unit_data_all.data());
 
-    cl_mem v_data_mem = cl_program->createBuffer(CL_MEM_READ_WRITE, 
-                                                 sizeof(unit_data) * view_dir.size(), nullptr);
-    cl_mem s0_mem = cl_program->createBuffer(CL_MEM_READ_WRITE, 
-                                             sizeof(cl_int) * view_dir.size(), nullptr);
-    cl_mem s1_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
-                                             sizeof(cl_int) * view_dir.size(), nullptr);
-    cl_mem s2_refract_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
-                                                     sizeof(cl_int) * view_dir.size(), nullptr);
-    cl_mem s2_specular_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
-                                                     sizeof(cl_int) * view_dir.size(), nullptr);
-    cl_mem s2_diffuse_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
-                                                     sizeof(cl_int) * view_dir.size(), nullptr);
-    cl_mem s2_light_mem = cl_program->createBuffer(CL_MEM_READ_WRITE,
-                                                   sizeof(cl_int) * view_dir.size(), nullptr);
+    cl::Buffer stage_mem[6];
+    for(int i = 0 ; i < 6 ; i += 1) 
+        stage_mem[i] = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_int) * unit_data_all.size());
 
-#define SAMPLES 10
+    cl::Buffer v_data_mem(context, CL_MEM_READ_WRITE, 
+                          sizeof(unit_data) * view_dir.size(), nullptr);
+
     // Random seeds
     cl_long * random_seeds = new cl_long[view_dir.size()];
-    for(int i = 0 ; i < view_dir.size() ; i += 1)
+    for(size_t i = 0 ; i < view_dir.size() ; i += 1)
         random_seeds[i] = rand();
-    cl_mem rand_seed_mem = cl_program->createBuffer(CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, 
-                                                    sizeof(cl_long) * view_dir.size(), random_seeds);
+    cl::Buffer rand_seed_mem(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, 
+                             sizeof(cl_long) * view_dir.size(), random_seeds);
 
-    int max_data = -1;
-    int max_sizes[10] = {0};
+#define SAMPLES 10
 
     uint64_t s0_time = 0;
     uint64_t s1_time = 0;
     uint64_t s2_time = 0;
 
     for(size_t ii = 0 ; ii < SAMPLES ; ii += 1) {
+
         cl_int v_sizes[10] = {0};
         v_sizes[0] = view_dir.size();
-        cl_program->writeBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
-        // cl_program->writeBuffer(v_data_mem, 
-        //                         sizeof(unit_data) * s0_all.size(), 
-        //                         s0_all.data());
 
-        // cl_program->writeBuffer(s0_mem, sizeof(cl_int) * view_dir.size(), intial_s0);
-        clEnqueueCopyBuffer(cl_program->commands, v_data_initial_mem, v_data_mem, 0, 0, sizeof(unit_data) * view_dir.size(), 0, NULL, NULL);
-        clEnqueueCopyBuffer(cl_program->commands, s0_initial_mem, s0_mem, 0, 0, sizeof(cl_int) * view_dir.size(), 0, NULL, NULL);
-        clFinish(cl_program->commands);
+        queue.enqueueWriteBuffer(v_sizes_mem, CL_FALSE, 0, sizeof(cl_int) * 10, v_sizes);
+        queue.enqueueCopyBuffer(v_data_initial_mem, v_data_mem, 0, 0, sizeof(unit_data) * unit_data_all.size());
+        queue.enqueueCopyBuffer(s0_initial_mem, stage_mem[0], 0, 0, sizeof(cl_int) * unit_data_all.size());
+        queue.finish();
 
 #define MAX_DEPTH 6
         for(int i = 0 ; i < MAX_DEPTH ; i += 1) {
             hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
 
-            size_t local = 256;
-
             auto t0 = GetTimeStamp();
 
-            // run S0
-            // auto kernel = cl_program->getKernel("naive_intersect");
-            // clSetKernelArg(kernel, 0, sizeof(cl_mem), &v_sizes_mem);
-            // clSetKernelArg(kernel, 1, sizeof(cl_mem), &v_data_mem);
-            // clSetKernelArg(kernel, 2, sizeof(cl_mem), &s0_mem);
-            // clSetKernelArg(kernel, 3, sizeof(cl_mem), &s1_mem);
-            // clSetKernelArg(kernel, 4, sizeof(cl_mem), &points_mem);
-            // clSetKernelArg(kernel, 5, sizeof(cl_mem), &geometries_mem);
-            // clSetKernelArg(kernel, 6, sizeof(cl_int), &geometries_size);
-            auto kernel = cl_program->getKernel("kdtree_intersect");
-            clSetKernelArg(kernel, 0, sizeof(cl_mem), &v_sizes_mem);
-            clSetKernelArg(kernel, 1, sizeof(cl_mem), &v_data_mem);
-            clSetKernelArg(kernel, 2, sizeof(cl_mem), &s0_mem);
-            clSetKernelArg(kernel, 3, sizeof(cl_mem), &s1_mem);
-            clSetKernelArg(kernel, 4, sizeof(cl_mem), &points_mem);
-            clSetKernelArg(kernel, 5, sizeof(cl_mem), &geometries_mem);
-            clSetKernelArg(kernel, 6, sizeof(cl_mem), &kdtree_leaf_data_mem);
-            clSetKernelArg(kernel, 7, sizeof(cl_mem), &kdtree_node_mem);
-            clSetKernelArg(kernel, 8, sizeof(cl_int), &kdtree_node_size);
+            cl::Kernel kernel(program, "kdtree_intersect");
+            kernel.setArg(0, v_sizes_mem);
+            kernel.setArg(1, v_data_mem);
+            kernel.setArg(2, stage_mem[0]); // s0
+            kernel.setArg(3, stage_mem[1]); // s1
+            kernel.setArg(4, points_mem);
+            kernel.setArg(5, geometries_mem);
+            kernel.setArg(6, kdtree_leaf_data_mem);
+            kernel.setArg(7, kdtree_node_mem);
+            kernel.setArg(8, kdtree_node_size);
+            queue.enqueueNDRangeKernel(kernel, 0, v_sizes[0]);
+            queue.finish();
 
-            // local = 2;
-            // size_t global = 2;
-            // global = (v_sizes[0] / local + 1) * local;
-            cl_program->enqueueNDKernel(kernel, v_sizes[0] );
-            // cl_program->enqueueNDKernel(kernel, 5);
-            // clEnqueueNDRangeKernel(cl_program->commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
-            clFinish(cl_program->commands);
-            cl_program->readBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
-            if(v_sizes[0] > max_sizes[0]) max_sizes[0] = v_sizes[0];
+            queue.enqueueReadBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
             v_sizes[0] = 0;
             hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
-            cl_program->writeBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
-            clReleaseKernel(kernel);
+            queue.enqueueWriteBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
 
             auto t1 = GetTimeStamp();
 
             // run S1
-            kernel = cl_program->getKernel("s1_run");
-            clSetKernelArg(kernel, 0, sizeof(cl_mem), &v_sizes_mem);
-            clSetKernelArg(kernel, 1, sizeof(cl_mem), &v_data_mem);
-            clSetKernelArg(kernel, 2, sizeof(cl_mem), &s1_mem);
-            clSetKernelArg(kernel, 3, sizeof(cl_mem), &results_mem);
-            clSetKernelArg(kernel, 4, sizeof(cl_mem), &s2_refract_mem);
-            clSetKernelArg(kernel, 5, sizeof(cl_mem), &s2_specular_mem);
-            clSetKernelArg(kernel, 6, sizeof(cl_mem), &s2_diffuse_mem);
-            clSetKernelArg(kernel, 7, sizeof(cl_mem), &s2_light_mem);
-            clSetKernelArg(kernel, 8, sizeof(cl_mem), &points_mem);
-            clSetKernelArg(kernel, 9, sizeof(cl_mem), &materials_mem);
-            clSetKernelArg(kernel, 10, sizeof(cl_mem), &rand_seed_mem);
+            kernel = cl::Kernel(program, "s1_run");
+            kernel.setArg(0, v_sizes_mem);
+            kernel.setArg(1, v_data_mem);
+            kernel.setArg(2, stage_mem[1]);
+            kernel.setArg(3, results_mem);
+            for(int i = 2 ; i < 6 ; i += 1)
+                kernel.setArg(i+2, stage_mem[i]);
+            kernel.setArg(8, points_mem);
+            kernel.setArg(9, materials_mem);
+            kernel.setArg(10, rand_seed_mem);
+            queue.enqueueNDRangeKernel(kernel, 0, v_sizes[1]);
+            queue.finish();
 
-            // global = (v_sizes[1] / local + 1) * local;
-            cl_program->enqueueNDKernel(kernel, v_sizes[1]);
-            // clEnqueueNDRangeKernel(cl_program->commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
-            clFinish(cl_program->commands);
-            cl_program->readBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
-            if(v_sizes[1] > max_sizes[1]) max_sizes[1] = v_sizes[1];
+            queue.enqueueReadBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
             v_sizes[1] = 0;
-            // v_sizes[6] = (i % 2 == 0) ? (UNIT_DATA_SIZE / 2) : 0;
             hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
-            cl_program->writeBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
-            clReleaseKernel(kernel);
+            queue.enqueueWriteBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
 
             if(i == MAX_DEPTH - 1) break;
 
             auto t2 = GetTimeStamp();
 
-            // run S2 refract
-            auto kernel_refract = cl_program->getKernel("s2_refract_run");
-            clSetKernelArg(kernel_refract, 0, sizeof(cl_mem), &v_sizes_mem);
-            clSetKernelArg(kernel_refract, 1, sizeof(cl_mem), &v_data_mem);
-            clSetKernelArg(kernel_refract, 2, sizeof(cl_mem), &s2_refract_mem);
-            clSetKernelArg(kernel_refract, 3, sizeof(cl_mem), &s0_mem);
-            // global = (v_sizes[2] / local + 1) * local;
-            cl_program->enqueueNDKernel(kernel_refract, v_sizes[2]);
-            // clEnqueueNDRangeKernel(cl_program->commands, kernel_refract, 1, NULL, &global, &local, 0, NULL, NULL);
-            // run S2 specular
-            auto kernel_specular = cl_program->getKernel("s2_specular_run");
-            clSetKernelArg(kernel_specular, 0, sizeof(cl_mem), &v_sizes_mem);
-            clSetKernelArg(kernel_specular, 1, sizeof(cl_mem), &v_data_mem);
-            clSetKernelArg(kernel_specular, 2, sizeof(cl_mem), &s2_specular_mem);
-            clSetKernelArg(kernel_specular, 3, sizeof(cl_mem), &s0_mem);
-            // global = (v_sizes[3] / local + 1) * local;
-            cl_program->enqueueNDKernel(kernel_specular, v_sizes[3]);
-            // clEnqueueNDRangeKernel(cl_program->commands, kernel_specular, 1, NULL, &global, &local, 0, NULL, NULL);
-            // run S2 diffuse 
-            auto kernel_diffuse = cl_program->getKernel("s2_diffuse_run");
-            clSetKernelArg(kernel_diffuse, 0, sizeof(cl_mem), &v_sizes_mem);
-            clSetKernelArg(kernel_diffuse, 1, sizeof(cl_mem), &v_data_mem);
-            clSetKernelArg(kernel_diffuse, 2, sizeof(cl_mem), &s2_diffuse_mem);
-            clSetKernelArg(kernel_diffuse, 3, sizeof(cl_mem), &s0_mem);
-            clSetKernelArg(kernel_diffuse, 4, sizeof(cl_mem), &rand_seed_mem);
-            // global = (v_sizes[4] / local + 1) * local;
-            cl_program->enqueueNDKernel(kernel_diffuse, v_sizes[4]);
-            // clEnqueueNDRangeKernel(cl_program->commands, kernel_diffuse, 1, NULL, &global, &local, 0, NULL, NULL);
-            // run S2 light 
-            auto kernel_light = cl_program->getKernel("s2_light_run");
-            clSetKernelArg(kernel_light, 0, sizeof(cl_mem), &v_sizes_mem);
-            clSetKernelArg(kernel_light, 1, sizeof(cl_mem), &v_data_mem);
-            clSetKernelArg(kernel_light, 2, sizeof(cl_mem), &s2_light_mem);
-            clSetKernelArg(kernel_light, 3, sizeof(cl_mem), &s0_mem);
-            clSetKernelArg(kernel_light, 4, sizeof(cl_mem), &lights_mem);
-            clSetKernelArg(kernel_light, 5, sizeof(cl_int), &lights_size);
-            clSetKernelArg(kernel_light, 6, sizeof(cl_mem), &points_mem);
-            clSetKernelArg(kernel_light, 7, sizeof(cl_mem), &rand_seed_mem);
-            // global = (v_sizes[5] / local + 1) * local;
-            cl_program->enqueueNDKernel(kernel_light, v_sizes[5]);
-            // clEnqueueNDRangeKernel(cl_program->commands, kernel_light, 1, NULL, &global, &local, 0, NULL, NULL);
-            // finish S2
-            clFinish(cl_program->commands);
-            cl_program->readBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
-            if(v_sizes[2] > max_sizes[2]) max_sizes[2] = v_sizes[2];
-            if(v_sizes[3] > max_sizes[3]) max_sizes[3] = v_sizes[3];
-            if(v_sizes[4] > max_sizes[4]) max_sizes[4] = v_sizes[4];
-            if(v_sizes[5] > max_sizes[5]) max_sizes[5] = v_sizes[5];
+            cl::Kernel kernels[4];
+            kernels[0] = cl::Kernel(program, "s2_refract_run");
+            kernels[1] = cl::Kernel(program, "s2_specular_run");
+            kernels[2] = cl::Kernel(program, "s2_diffuse_run");
+            kernels[3] = cl::Kernel(program, "s2_light_run");
+            for(int i = 0 ; i < 4 ; i += 1) {
+                kernels[i].setArg(0, v_sizes_mem);
+                kernels[i].setArg(1, v_data_mem);
+                kernels[i].setArg(2, stage_mem[i+2]);
+                kernels[i].setArg(3, stage_mem[0]);
+            }
+            kernels[2].setArg(4, rand_seed_mem);
+            kernels[3].setArg(4, lights_mem);
+            kernels[3].setArg(5, lights_size);
+            kernels[3].setArg(6, points_mem);
+            kernels[3].setArg(7, rand_seed_mem);
+
+            for(int i = 0 ; i < 4 ; i += 1)
+                queue.enqueueNDRangeKernel(kernels[i], 0, v_sizes[i+2]);
+            queue.finish();
+
+            queue.enqueueReadBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
             v_sizes[2] = v_sizes[3] = v_sizes[4] = v_sizes[5] = 0;
-            cl_program->writeBuffer(v_sizes_mem, sizeof(cl_int) * 10, v_sizes);
+            queue.enqueueWriteBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
 
             auto t3 = GetTimeStamp();
 
             hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
-            clReleaseKernel(kernel_refract);
-            clReleaseKernel(kernel_specular);
-            clReleaseKernel(kernel_diffuse);
-            // clReleaseKernel(kernel_light);
 
             s0_time += t1 - t0;
             s1_time += t2 - t1;
             s2_time += t3 - t2;
-
-            // auto tmp = v_sizes[6] - ((i % 2 == 0) ? (UNIT_DATA_SIZE / 2) : 0);
-            // if(tmp > max_data) max_data = tmp;
         }
     }
 
-    // hp_log("Max data: %d", max_data);
-    hp_log("Max sx size: %d %d %d %d %d %d", 
-           max_sizes[0], max_sizes[1], max_sizes[2], max_sizes[3],
-           max_sizes[4], max_sizes[5]);
-    hp_log("Time: s0 %ld, s1 %ld, s2 %ld", s0_time, s1_time, s2_time);
+    hp_log("Time: s0 %llu, s1 %llu, s2 %llu", s0_time, s1_time, s2_time);
 
     result.resize(view_dir.size() * 3, 0);
-    cl_program->readBuffer(results_mem, sizeof(cl_float) * view_dir.size() * 3, result.data());
+    queue.enqueueReadBuffer(results_mem, CL_TRUE, 0, sizeof(cl_float) * view_dir.size() * 3, result.data());
 
-    for(int i = 0 ; i < result.size() ; i += 1)
+    for(size_t i = 0 ; i < result.size() ; i += 1)
         result[i] /= float(SAMPLES);
 }
