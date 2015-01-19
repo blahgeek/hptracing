@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-19
+* @Last Modified time: 2015-01-20
 */
 
 #include <iostream>
@@ -35,11 +35,7 @@ sample(sample), depth(depth) {
 
     try {
         program = cl::Program(context, sources);
-#ifdef CL_VERSION_1_2
-        program.build(devices, "-D CL_VERSION_1_2");
-#else
         program.build(devices);
-#endif
     } catch(cl::Error & err) {
         auto info = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0]);
         std::cerr << info << std::endl;
