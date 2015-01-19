@@ -13,6 +13,7 @@ typedef struct {
     float intersect_number;
     float3 intersect_p, normal;
     float optical_density;
+    float shininess;
 } unit_data;
 
 typedef struct {
@@ -21,6 +22,7 @@ typedef struct {
     float3 specular;
     float optical_density;
     float dissolve;
+    float shininess;
 
     float specular_possibility;
     float refract_possibility;

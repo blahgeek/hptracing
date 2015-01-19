@@ -321,6 +321,7 @@ __kernel void s1_run(__global int * v_sizes,
         int index = atomic_inc(v_sizes + S2_SPECULAR_SIZE_OFFSET);
         v_s2_specular[index] = this_id;
         v_data[this_id].strength = s1.strength * mat.specular;
+        v_data[this_id].shininess = mat.shininess;
         return;
     }
 
@@ -389,17 +390,24 @@ __kernel void s2_refract_run(__global int * v_sizes,
 __kernel void s2_specular_run(__global int * v_sizes,
                               __global unit_data * v_data,
                               __global int * v_s2_specular,
-                              __global int * v_s0) {
+                              __global int * v_s0,
+                              __global long * v_seed) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S2_SPECULAR_SIZE_OFFSET]) return;
 
     int this_id = v_s2_specular[global_id];
     unit_data s2 = v_data[this_id];
 
+    long rand_seed = v_seed[global_id] + global_id;
+    float3 rand_v = randf3(&rand_seed) / 2.0 / s2.shininess;
+    v_seed[global_id] = rand_seed;
+
     // compute reflection
     float dot_ = dot(s2.in_dir, s2.normal);
     float3 projection = dot_ * s2.normal;
     float3 reflection_dir = s2.in_dir - 2.0f * projection;
+
+    reflection_dir = reflection_dir + rand_v;
 
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
     v_s0[index] = this_id;
@@ -422,7 +430,6 @@ __kernel void s2_diffuse_run(__global int * v_sizes,
     bool dir = dot(s2.in_dir, s2.normal) < 0;
 
     long rand_seed = v_seed[global_id] + global_id;
-    v_seed[global_id] = rand_seed;
 
     float3 p = randf3(&rand_seed);
     float dot_normal = dot(p, s2.normal);
@@ -438,6 +445,7 @@ __kernel void s2_diffuse_run(__global int * v_sizes,
     v_data[this_id].strength = strength;
     v_data[this_id].start_p = s2.intersect_p + 0.5f * p;
     v_data[this_id].in_dir = p;
+    v_seed[global_id] = rand_seed;
 }
 
 __kernel void s2_light_run(__global int * v_sizes,
@@ -457,7 +465,6 @@ __kernel void s2_light_run(__global int * v_sizes,
     bool dir = dot(s2.in_dir, s2.normal) < 0;
 
     long rand_seed = v_seed[global_id] + global_id;
-    v_seed[global_id] = rand_seed;
 
     int rand_light_index = rand(&rand_seed) % v_lights_size;
     int4 light = v_lights[rand_light_index];
@@ -484,4 +491,5 @@ __kernel void s2_light_run(__global int * v_sizes,
         v_data[this_id].start_p = s2.intersect_p + 0.5f * p;
         v_data[this_id].in_dir = p;
     }
+    v_seed[global_id] = rand_seed;
 }

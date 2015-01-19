@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-18
+* @Last Modified time: 2015-01-19
 */
 
 #include <iostream>
@@ -44,6 +44,7 @@ Scene::Scene(std::string filename) {
         ASSIGN_F3(x.specular, mat.specular);
         x.optical_density = mat.ior;
         x.dissolve = mat.dissolve;
+        x.shininess = mat.shininess;
 
         Number specular_length = NORM(mat.specular);
         Number diffuse_length = NORM(mat.diffuse);

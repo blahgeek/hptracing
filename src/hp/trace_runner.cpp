@@ -161,7 +161,7 @@ void TraceRunner::run() {
     uint64_t s1_time = 0;
     uint64_t s2_time = 0;
 
-    for(size_t ii = 0 ; ii < this->sample ; ii += 1) {
+    for(int ii = 0 ; ii < this->sample ; ii += 1) {
 
         TickTock timer;
 
@@ -238,8 +238,9 @@ void TraceRunner::run() {
                 kernels[i].setArg(1, v_data_mem);
                 kernels[i].setArg(2, stage_mem[i+2]);
                 kernels[i].setArg(3, stage_mem[0]);
+                if(i == 1 || i == 2)
+                    kernels[i].setArg(4, rand_seed_mem);
             }
-            kernels[2].setArg(4, rand_seed_mem);
             kernels[3].setArg(4, lights_mem);
             kernels[3].setArg(5, lights_size);
             kernels[3].setArg(6, points_mem);
@@ -264,7 +265,7 @@ void TraceRunner::run() {
             s2_time += t3 - t2;
         }
 
-        timer.timeit("Sample %lu done", ii);
+        timer.timeit("Sample %d done", ii);
     }
 
     hp_log("Time: s0 %llu, s1 %llu, s2 %llu", s0_time, s1_time, s2_time);
