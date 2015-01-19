@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-05
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-06
+* @Last Modified time: 2015-01-19
 */
 
 #include "./common.h"
@@ -11,6 +11,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <mutex>
+#include <sys/time.h>
 
 #include <unistd.h>
 #ifndef _GNU_SOURCE
@@ -18,6 +19,30 @@
 #endif
 
 using namespace hp;
+
+static uint64_t GetTimeStamp() {
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    return tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
+}
+
+TickTock::TickTock() {
+    this->t = GetTimeStamp();
+}
+
+void TickTock::timeit(const char * msg_fmt, ...) {
+    auto new_t = GetTimeStamp();
+    auto delta = new_t - this->t;
+    this->t = new_t;
+
+    fprintf(stderr, "[TickTock] %lldms: ", delta / 1000);
+    va_list ap;
+    va_start(ap, msg_fmt);
+    vfprintf(stderr, msg_fmt, ap);
+    va_end(ap);
+    fputc('\n', stderr);
+}
+
 
 bool hp::g_log_enable = true;
 

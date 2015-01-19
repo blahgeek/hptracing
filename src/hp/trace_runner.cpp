@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-18
+* @Last Modified time: 2015-01-19
 */
 
 #include <iostream>
@@ -31,8 +31,14 @@ sample(sample), depth(depth) {
     };
     auto sources = read_source("src/hp/cl_src/types.h.cl") + read_source("src/hp/cl_src/kernel.cl");
 
-    program = cl::Program(context, sources);
-    program.build(devices);
+    try {
+        program = cl::Program(context, sources);
+        program.build(devices);
+    } catch(cl::Error & err) {
+        auto info = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0]);
+        std::cerr << info << std::endl;
+        throw err;
+    }
 
     std::srand(std::time(0));
 
@@ -157,6 +163,8 @@ void TraceRunner::run() {
 
     for(size_t ii = 0 ; ii < this->sample ; ii += 1) {
 
+        TickTock timer;
+
         memset(v_sizes, 0, sizeof(v_sizes));
         v_sizes[1] = intial_s1_size;
 
@@ -166,7 +174,7 @@ void TraceRunner::run() {
         queue.finish();
 
         for(int i = 0 ; i < this->depth ; i += 1) {
-            hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
+            // hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
 
             auto t0 = GetTimeStamp();
 
@@ -187,8 +195,8 @@ void TraceRunner::run() {
 
             queue.enqueueReadBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
             v_sizes[0] = 0;
-            hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
-            queue.enqueueWriteBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
+            // hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
+            // queue.enqueueWriteBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
 
             auto t1 = GetTimeStamp();
 
@@ -211,8 +219,9 @@ void TraceRunner::run() {
             queue.finish();
 
             queue.enqueueReadBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
+            v_sizes[0] = 0;
             v_sizes[1] = 0;
-            hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
+            // hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
             queue.enqueueWriteBuffer(v_sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
 
             if(i == this->depth - 1) break;
@@ -248,12 +257,14 @@ void TraceRunner::run() {
 
             auto t3 = GetTimeStamp();
 
-            hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
+            // hp_log("Loop%d: Size: S0 %d, S1 %d, S2 %d %d %d %d, Data %d", i, v_sizes[0], v_sizes[1], v_sizes[2], v_sizes[3], v_sizes[4], v_sizes[5], v_sizes[6]);
 
             s0_time += t1 - t0;
             s1_time += t2 - t1;
             s2_time += t3 - t2;
         }
+
+        timer.timeit("Sample %lu done", ii);
     }
 
     hp_log("Time: s0 %llu, s1 %llu, s2 %llu", s0_time, s1_time, s2_time);

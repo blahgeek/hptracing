@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-18
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-18
+* @Last Modified time: 2015-01-19
 */
 
 #include <iostream>
@@ -34,7 +34,11 @@ int main(int argc, char const *argv[]) {
     optparse::Values options = parser.parse_args(argc, argv);
     vector<string> args = parser.args();
 
+    TickTock timer;
+
     auto scene = std::make_unique<KDTree>(options["input"]);
+    timer.timeit("Build KDTree done.");
+    
     string view_point_str = options["view"];
     cl_float3 view_point;
     for(int i = 0 ; i < 3 ; i += 1) {

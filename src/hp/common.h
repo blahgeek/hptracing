@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-05
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-18
+* @Last Modified time: 2015-01-19
 */
 
 #ifndef __hp_common_h__
@@ -44,6 +44,15 @@ extern bool g_log_enable;
 
 #define hp_log(fmt...) \
 	__hp_log__(__FILE__, __func__, __LINE__, fmt)
+
+class TickTock {
+private:
+    uint64_t t = 0;
+public:
+    TickTock();
+    void timeit(const char *msg_fmt = nullptr, ...)
+        __attribute__((format(printf, 2, 3)));
+};
 
 /*!
  * \brief printf-like std::string constructor
