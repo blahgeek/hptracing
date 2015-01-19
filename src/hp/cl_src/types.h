@@ -28,6 +28,7 @@ typedef struct {
 } unit_data;
 
 typedef struct {
+    cl_float3 emission;
     cl_float3 ambient;
     cl_float3 diffuse;
     cl_float3 specular;

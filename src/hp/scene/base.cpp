@@ -45,6 +45,7 @@ Scene::Scene(std::string filename) {
 
     for(auto & mat: mats) {
         Material x;
+        ASSIGN_F3(x.emission, mat.emission);
         ASSIGN_F3(x.ambient, mat.ambient);
         ASSIGN_F3(x.diffuse, mat.diffuse);
         ASSIGN_F3(x.specular, mat.specular);
@@ -135,15 +136,15 @@ void Scene::registerGeometry(cl_int4 triangle) {
     Vec pb = CL_FLOAT3_TO_VEC(points[triangle.s[1]]);
     Vec pc = CL_FLOAT3_TO_VEC(points[triangle.s[2]]);
     Material mat = materials[triangle.s[3]];
-    Number ambient_norm = CL_FLOAT3_TO_VEC(mat.ambient).norm();
-    if(ambient_norm > 0) {
+    Number emission_norm = CL_FLOAT3_TO_VEC(mat.emission).norm();
+    if(emission_norm > 0) {
         Vec dx = pb - pa;
         Vec dy = pc - pa;
         Number dot = dx.dot(dy);
         Number cosine = dx.normalized().dot(dy.normalized());
         Number area = dot / cosine * std::sqrt(1 - cosine * cosine);
 
-        Number val = area * ambient_norm;
+        Number val = area * emission_norm;
         total_light_val += val;
         lights_map[total_light_val] = geometries.size() - 1;
     }

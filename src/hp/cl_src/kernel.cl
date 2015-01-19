@@ -251,9 +251,9 @@ __kernel void naive_intersect(__global int * v_sizes,
 }
 
 __constant sampler_t sampler =
-    CLK_NORMALIZED_COORDS_FALSE
-    | CLK_ADDRESS_CLAMP_TO_EDGE
-    | CLK_FILTER_NEAREST;
+    CLK_NORMALIZED_COORDS_TRUE
+    | CLK_ADDRESS_REPEAT
+    | CLK_FILTER_LINEAR;
 
 __kernel void s1_run(__global int * v_sizes,
                      __global unit_data * v_data,
@@ -302,7 +302,7 @@ __kernel void s1_run(__global int * v_sizes,
                  area3 * scene_normals[s1.geometry.z];
     }
 
-    float3 result = s1.strength * mat.ambient;
+    float3 result = s1.strength * (mat.ambient + mat.emission);
     result *= fabs(dot(normal, s1.in_dir));
 
     __global float * target = v_result + s1.orig_id * 3;
@@ -354,7 +354,7 @@ __kernel void s1_run(__global int * v_sizes,
                  area3 * scene_texcoords[s1.geometry.z];
         }
         diffuse = read_imagef(textures, sampler, 
-                              (float4)(uv.x * 512.f, uv.y * 512.f, mat.texture_id, 0)).xyz;
+                              (float4)(uv.x, uv.y, mat.texture_id, 0)).xyz;
     }
 
     if(rand_num < mat.diffuse_possibility) {

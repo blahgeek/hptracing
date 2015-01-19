@@ -17,6 +17,7 @@ typedef struct {
 } unit_data;
 
 typedef struct {
+    float3 emission;
     float3 ambient;
     float3 diffuse;
     float3 specular;

@@ -90,6 +90,9 @@ void TraceRunner::run() {
                                        Scene::texture_width,
                                        Scene::texture_height,
                                        0, 0, scene->texture_data.data());
+    else texture_mem = cl::Image2DArray(context, CL_MEM_READ_ONLY,
+                                        cl::ImageFormat(CL_RGBA, CL_UNORM_INT8),
+                                        1, 1, 1, 0, 0);
 
     cl_int texcoords_size = scene->texcoords.size();
     cl::Buffer texcoords_mem;
