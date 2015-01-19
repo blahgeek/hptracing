@@ -361,8 +361,8 @@ __kernel void s1_run(__global int * v_sizes,
         diffuse = read_imagef(textures, sampler, 
                               (float4)(uv.x, uv.y, mat.texture_id, 0)).xyz;
     #else
-        __global unsigned char * texture_p = texture + 4 * 512 * 512 * mat.texture_id
-                                             + (convert_int(uv.x) * 512 + convert_int(uv.y)) * 4;
+        __global unsigned char * texture_p = textures + 4 * 512 * 512 * mat.texture_id
+                                             + (convert_int(uv.x * 512.f) * 512 + convert_int(uv.y * 512.f)) * 4;
         diffuse.x = convert_float(texture_p[0]) / 255.0f;
         diffuse.y = convert_float(texture_p[1]) / 255.0f;
         diffuse.z = convert_float(texture_p[2]) / 255.0f;
