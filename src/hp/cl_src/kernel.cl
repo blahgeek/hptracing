@@ -84,51 +84,27 @@ bool _box_intersect(float3 box_start, float3 box_end, float3 start_p, float3 in_
 
 float _single_intersect(float3 start_p, float3 in_dir,
                         float3 pa, float3 pb, float3 pc) {
+    #define EPSILON 1e-3f
 
-    float3 a = in_dir;
-    float3 b = pa - pb;
-    float3 c = pa - pc;
-    float3 t = pa - start_p;
+    float3 e1 = pb - pa;
+    float3 e2 = pc - pa;
+    float3 P = cross(in_dir, e2);
+    float det = dot(e1, P);
+    if(det > EPSILON && det < EPSILON) return -1;
 
-    float x, m, n;
+    float inv_det = 1.f / det;
+    float3 T = start_p - pa;
+    float u = dot(T, P) * inv_det;
+    if(u < 0.f || u > 1.f) return -1;
 
-    float4 line[3];
-    line[0] = (float4)(a.x, b.x, c.x, t.x);
-    line[1] = (float4)(a.y, b.y, c.y, t.y);
-    line[2] = (float4)(a.z, b.z, c.z, t.z);
+    float3 Q = cross(T, e1);
+    float v = dot(in_dir, Q) * inv_det;
+    if(v < 0.f || u + v  > 1.f) return -1;
 
-    float3 abs_a = fabs(a);
+    float t = dot(e2, Q) * inv_det;
+    if(t > 0) return t;
 
-    if(abs_a.y > abs_a.x && abs_a.y > abs_a.z) {
-        float4 tmp = line[0];
-        line[0] = line[1];
-        line[1] = tmp;
-    } else if (abs_a.z > abs_a.x) {
-        float4 tmp = line[0];
-        line[0] = line[2];
-        line[2] = tmp;
-    }
-
-    if(fabs(line[2].y) > fabs(line[1].y)) {
-        float4 tmp = line[1];
-        line[1] = line[2];
-        line[2] = tmp;
-    }
-
-    line[1] += line[0] * (-line[1].s0 / line[0].s0);
-    line[2] += line[0] * (-line[2].s0 / line[0].s0);
-    line[2] += line[1] * (-line[2].s1 / line[1].s1);
-
-    n = line[2].w / line[2].z;
-    m = (line[1].w - line[1].z * n) / line[1].y;
-    x = (line[0].w - line[0].z * n - line[0].y * m) / line[0].x;
-
-    // nan >= 0 returns false
-    if(m >= 0 && m <= 1 && n >= 0 && n <= 1
-       && m + n < 1 && x > 0) 
-        return x;
-
-    return -44;
+    return -1;
 
 }
 
