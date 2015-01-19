@@ -46,7 +46,7 @@ inline float3 randf3(long * seed) {
     return ret;
 }
 
-#define GENERAL_THRESHOLD (1e-3f)
+#define GENERAL_THRESHOLD (1e-4f)
 
 inline float _box_intersect_dimension(float p0, float p, float s) {
 //    if(p == 0) return -1;

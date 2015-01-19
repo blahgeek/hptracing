@@ -95,7 +95,7 @@ int main(int argc, char const *argv[]) {
     fout << "P3\n";
     fout << width << " " << height << "\n255\n";
     for(int y = height -1 ; y >= 0 ; y -= 1) {
-        for(int x = 0 ; x < width ; x += 1) {
+        for(int x = width - 1 ; x >= 0 ; x -= 1) {
             for(int k = 0 ; k < 3 ; k += 1) {
                 float val = 0;
                 if(!supersample)
