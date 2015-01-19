@@ -82,6 +82,21 @@ void TraceRunner::run() {
     cl::Buffer lights_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                           sizeof(cl_int4) * scene->lights.size(), scene->lights.data());
 
+    cl::Image2DArray texture_mem;
+    if(scene->texture_names.size() > 0)
+        texture_mem = cl::Image2DArray(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                       cl::ImageFormat(CL_RGBA, CL_UNORM_INT8), 
+                                       scene->texture_names.size(),
+                                       Scene::texture_width,
+                                       Scene::texture_height,
+                                       0, 0, scene->texture_data.data());
+
+    cl_int texcoords_size = scene->texcoords.size();
+    cl::Buffer texcoords_mem;
+    if(texcoords_size > 0)
+        texcoords_mem = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                   sizeof(cl_float2) * texcoords_size, scene->texcoords.data());
+
     cl::Buffer materials_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                              sizeof(Material) * scene->materials.size(),
                              scene->materials.data());
@@ -211,8 +226,11 @@ void TraceRunner::run() {
             kernel.setArg(8, points_mem);
             kernel.setArg(9, normals_mem);
             kernel.setArg(10, normals_size);
-            kernel.setArg(11, materials_mem);
-            kernel.setArg(12, rand_seed_mem);
+            kernel.setArg(11, texcoords_mem);
+            kernel.setArg(12, texcoords_size);
+            kernel.setArg(13, materials_mem);
+            kernel.setArg(14, texture_mem);
+            kernel.setArg(15, rand_seed_mem);
             if(v_sizes[1])
                 ND_RANGE(queue, kernel, v_sizes[1]);
                 // queue.enqueueNDRangeKernel(kernel, 0, v_sizes[1], 256);

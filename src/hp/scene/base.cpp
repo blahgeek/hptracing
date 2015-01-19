@@ -11,6 +11,9 @@
 #include <vector>
 #include <string>
 
+#define cimg_display 0
+#include "../../CImg/CImg.h"
+
 #include "../../objloader/tiny_obj_loader.h"
 
 #define ASSIGN_F3(X, Y) \
@@ -27,6 +30,9 @@
     hp::Vec(X.s[0], X.s[1], X.s[2])
 
 using namespace hp;
+
+int Scene::texture_width = 512;
+int Scene::texture_height = 512;
 
 Scene::Scene(std::string filename) {
     std::vector<tinyobj::shape_t> shapes;
@@ -45,6 +51,12 @@ Scene::Scene(std::string filename) {
         x.optical_density = mat.ior;
         x.dissolve = mat.dissolve;
         x.shininess = mat.shininess;
+        x.texture_id = -1;
+
+        if(mat.diffuse_texname.length() > 0) {
+            x.texture_id = texture_names.size();
+            texture_names.push_back(mat.diffuse_texname);
+        }
 
         Number specular_length = NORM(mat.specular);
         Number diffuse_length = NORM(mat.diffuse);
@@ -55,6 +67,19 @@ Scene::Scene(std::string filename) {
         x.diffuse_possibility = diffuse_length * 0.9f / sum + x.refract_possibility;
         // x.diffuse_possibility = x.refract_possibility;
         this->materials.push_back(x);
+    }
+
+    for(auto & texture_name: texture_names) {
+        hp_log("Reading texture %s", texture_name.c_str());
+        auto image = cimg_library::CImg<>(texture_name.c_str())
+                     .normalize(0, 255).resize(texture_width, texture_height, 1, 3);
+        for(int i = 0 ; i < texture_height ; i += 1) {
+            for(int j = 0 ; j < texture_width ; j += 1) {
+                for(int k = 0 ; k < 3 ; k += 1)
+                    this->texture_data.push_back(image(j, i, k));
+                this->texture_data.push_back(0);
+            }
+        }
     }
 
     for(auto & shape: shapes) {
@@ -76,6 +101,14 @@ Scene::Scene(std::string filename) {
             normal.s[1] = shape.mesh.normals[i+1];
             normal.s[2] = shape.mesh.normals[i+2];
             this->normals.push_back(normal);
+        }
+        if(shape.mesh.texcoords.size() == 0)
+            hp_log("WARNING: No texcoord data found");
+        for(size_t i = 0 ; i < shape.mesh.texcoords.size() ; i += 2) {
+            cl_float2 coord;
+            coord.s[0] = shape.mesh.texcoords[i];
+            coord.s[1] = shape.mesh.texcoords[i+1];
+            this->texcoords.push_back(coord);
         }
         for(size_t i = 0 ; i < shape.mesh.indices.size() ; i += 3) {
             cl_int4 triangle;

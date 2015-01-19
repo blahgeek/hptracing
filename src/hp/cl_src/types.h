@@ -35,6 +35,8 @@ typedef struct {
     cl_float dissolve;
     cl_float shininess;
 
+    cl_int texture_id;
+
     cl_float specular_possibility;
     cl_float refract_possibility;
     cl_float diffuse_possibility;

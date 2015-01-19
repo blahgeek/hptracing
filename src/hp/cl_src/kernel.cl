@@ -250,6 +250,11 @@ __kernel void naive_intersect(__global int * v_sizes,
     }
 }
 
+__constant sampler_t sampler =
+    CLK_NORMALIZED_COORDS_FALSE
+    | CLK_ADDRESS_CLAMP_TO_EDGE
+    | CLK_FILTER_NEAREST;
+
 __kernel void s1_run(__global int * v_sizes,
                      __global unit_data * v_data,
                      __global int * v_s1,
@@ -261,7 +266,10 @@ __kernel void s1_run(__global int * v_sizes,
                      __global float3 * scene_points,
                      __global float3 * scene_normals,
                      const int scene_normals_size,
+                     __global float2 * scene_texcoords,
+                     const int scene_texcoords_size,
                      __constant Material * v_materials,
+                     __read_only image2d_array_t textures,
                      __global long * v_seed) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S1_SIZE_OFFSET]) return;
@@ -276,6 +284,8 @@ __kernel void s1_run(__global int * v_sizes,
 
     float3 intersect_p = s1.start_p + s1.intersect_number * s1.in_dir;
 
+    float area1, area2, area3;
+
     float3 normal;
     if(scene_normals_size == 0) {
         normal = normalize(cross(geo_b - geo_a, geo_c - geo_a));
@@ -284,14 +294,13 @@ __kernel void s1_run(__global int * v_sizes,
         float3 f2 = geo_b - intersect_p;
         float3 f3 = geo_c - intersect_p;
         float area_all = length(cross(geo_b - geo_a, geo_c - geo_a));
-        float area1 = length(cross(f2, f3)) / area_all;
-        float area2 = length(cross(f1, f3)) / area_all;
-        float area3 = length(cross(f1, f2)) / area_all;
+        area1 = length(cross(f2, f3)) / area_all;
+        area2 = length(cross(f1, f3)) / area_all;
+        area3 = length(cross(f1, f2)) / area_all;
         normal = area1 * scene_normals[s1.geometry.x] + 
                  area2 * scene_normals[s1.geometry.y] +
                  area3 * scene_normals[s1.geometry.z];
     }
-
 
     float3 result = s1.strength * mat.ambient;
     result *= fabs(dot(normal, s1.in_dir));
@@ -334,18 +343,32 @@ __kernel void s1_run(__global int * v_sizes,
         return;
     }
 
+    float3 diffuse = mat.diffuse;
+    if(mat.texture_id >= 0) {
+        float2 uv;
+        if(scene_texcoords_size == 0) {
+            uv = normalize(intersect_p.xy);
+        } else {
+            uv = area1 * scene_texcoords[s1.geometry.x] +
+                 area2 * scene_texcoords[s1.geometry.y] +
+                 area3 * scene_texcoords[s1.geometry.z];
+        }
+        diffuse = read_imagef(textures, sampler, 
+                              (float4)(uv.x * 512.f, uv.y * 512.f, mat.texture_id, 0)).xyz;
+    }
+
     if(rand_num < mat.diffuse_possibility) {
         // diffuse!
         int index = atomic_inc(v_sizes + S2_DIFFUSE_SIZE_OFFSET);
         v_s2_diffuse[index] = this_id;
-        v_data[this_id].strength = s1.strength * mat.diffuse;
+        v_data[this_id].strength = s1.strength * diffuse;
         return;
     }
 
     // rest is light
     int index = atomic_inc(v_sizes + S2_LIGHT_SIZE_OFFSET);
     v_s2_light[index] = this_id;
-    v_data[this_id].strength = s1.strength * mat.diffuse;
+    v_data[this_id].strength = s1.strength * diffuse;
 
 }
 
