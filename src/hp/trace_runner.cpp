@@ -35,7 +35,11 @@ sample(sample), depth(depth) {
 
     try {
         program = cl::Program(context, sources);
+#ifdef CL_VERSION_1_2
+        program.build(devices, "-D CL_VERSION_1_2");
+#else
         program.build(devices);
+#endif
     } catch(cl::Error & err) {
         auto info = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(devices[0]);
         std::cerr << info << std::endl;
@@ -84,6 +88,7 @@ void TraceRunner::run() {
     cl::Buffer lights_mem(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                           sizeof(cl_int4) * scene->lights.size(), scene->lights.data());
 
+#ifdef CL_VERSION_1_2
     cl::Image2DArray texture_mem;
     if(scene->texture_names.size() > 0)
         texture_mem = cl::Image2DArray(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
@@ -95,6 +100,13 @@ void TraceRunner::run() {
     else texture_mem = cl::Image2DArray(context, CL_MEM_READ_ONLY,
                                         cl::ImageFormat(CL_RGBA, CL_UNORM_INT8),
                                         1, 1, 1, 0, 0);
+#else
+    cl::Buffer texture_mem;
+    if(scene->texture_names.size() > 0)
+        texture_mem = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                 4 * Scene::texture_width * Scene::texture_height * scene->texture_names.size(),
+                                 scene->texture_data.data());
+#endif
 
     cl_int texcoords_size = scene->texcoords.size();
     cl::Buffer texcoords_mem;

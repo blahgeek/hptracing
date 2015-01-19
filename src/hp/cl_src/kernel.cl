@@ -269,7 +269,11 @@ __kernel void s1_run(__global int * v_sizes,
                      __global float2 * scene_texcoords,
                      const int scene_texcoords_size,
                      __constant Material * v_materials,
+                #ifdef CL_VERSION_1_2
                      __read_only image2d_array_t textures,
+                #else
+                     __global unsigned char * textures,
+                #endif
                      __global long * v_seed) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S1_SIZE_OFFSET]) return;
@@ -353,8 +357,16 @@ __kernel void s1_run(__global int * v_sizes,
                  area2 * scene_texcoords[s1.geometry.y] +
                  area3 * scene_texcoords[s1.geometry.z];
         }
+    #ifdef CL_VERSION_1_2
         diffuse = read_imagef(textures, sampler, 
                               (float4)(uv.x, uv.y, mat.texture_id, 0)).xyz;
+    #else
+        __global unsigned char * texture_p = texture + 4 * 512 * 512 * mat.texture_id
+                                             + (convert_int(uv.x) * 512 + convert_int(uv.y)) * 4;
+        diffuse.x = convert_float(texture_p[0]) / 255.0f;
+        diffuse.y = convert_float(texture_p[1]) / 255.0f;
+        diffuse.z = convert_float(texture_p[2]) / 255.0f;
+    #endif
     }
 
     if(rand_num < mat.diffuse_possibility) {
