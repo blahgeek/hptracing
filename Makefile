@@ -25,16 +25,23 @@ CXXSOURCES = $(shell find -L src -name "*.$(SRC_EXT)")
 OBJS = $(addprefix $(BUILD_DIR)/,$(CXXSOURCES:.$(SRC_EXT)=.o))
 DEPFILES = $(OBJS:.o=.d)
 
+CL_SOURCES = $(shell find -L src -name "*.cl")
+CL_INCS = $(CL_SOURCES:.cl=.cl.inc)
 
 all: $(TARGET)
 
 -include $(DEPFILES)
+
+$(BUILD_DIR)/hp/trace_runner.o: $(CL_INCS)
 
 $(BUILD_DIR)/%.o: %.$(SRC_EXT)
 	@echo "[cxx] $< ..."
 	@mkdir -pv $(dir $@)
 	@$(CXX) $(CPPFLAGS) -MM -MT "$@" "$<"  > "$(@:.o=.d)"
 	$(V)$(CXX) -c $< -o $@ $(CXXFLAGS)
+
+%.cl.inc: %.cl
+	xxd -i $< $@
 
 $(TARGET): $(OBJS)
 	@echo "Linking ..."
@@ -60,4 +67,6 @@ gprof:
 .SUFFIXES:
 
 .PHONY: all clean clean-full run gdb git gprof parser scanner
+
+.SECONDARY: $(CL_SOURCES)
 

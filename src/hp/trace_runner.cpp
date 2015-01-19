@@ -13,6 +13,9 @@
 #include <sys/time.h>
 #include <fstream>
 
+#include "./cl_src/types.h.cl.inc"
+#include "./cl_src/kernel.cl.inc"
+
 using namespace hp;
 
 TraceRunner::TraceRunner(std::unique_ptr<hp::KDTree> && scene,
@@ -23,13 +26,12 @@ sample(sample), depth(depth) {
     context = cl::Context(CL_DEVICE_TYPE_GPU);
     devices = context.getInfo<CL_CONTEXT_DEVICES>();
 
-    auto read_source = [&](const char * filename) {
-        std::ifstream t(filename);
-        std::string str((std::istreambuf_iterator<char>(t)),
-                        std::istreambuf_iterator<char>());
-        return str;
-    };
-    auto sources = read_source("src/hp/cl_src/types.h.cl") + read_source("src/hp/cl_src/kernel.cl");
+    std::string sources;
+    sources.resize(src_hp___cl_src_types_h_cl_len + src_hp___cl_src_kernel_cl_len);
+    memcpy(static_cast<void *>(&sources.front()), 
+           src_hp___cl_src_types_h_cl, src_hp___cl_src_types_h_cl_len);
+    memcpy(static_cast<void *>(&sources.front() + src_hp___cl_src_types_h_cl_len),
+           src_hp___cl_src_kernel_cl, src_hp___cl_src_kernel_cl_len);
 
     try {
         program = cl::Program(context, sources);

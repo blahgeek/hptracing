@@ -60,3 +60,5 @@ hptest
 build
 *.d
 
+*.cl.inc
+
