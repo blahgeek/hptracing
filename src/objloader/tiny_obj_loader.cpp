@@ -421,6 +421,12 @@ std::string LoadMtl (
       material.dissolve = parseFloat(token);
       continue;
     }
+    // also dissove // by blahgeek
+    if (token[0] == 'T' && token[1] == 'f' && isSpace(token[2])) {
+      token += 2;
+      material.dissolve = parseFloat(token);
+      continue;
+    }
 
     // ambient texture
     if ((0 == strncmp(token, "map_Ka", 6)) && isSpace(token[6])) {
