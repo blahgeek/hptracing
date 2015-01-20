@@ -85,12 +85,10 @@ int main(int argc, char const *argv[]) {
         }
     }
 
-    auto runner = std::make_unique<TraceRunner>(std::move(scene), 
-                                                std::move(view_dirs),
-                                                view_point,
-                                                (int)options.get("sample"),
-                                                (int)options.get("depth"));
-    runner->run();
+    auto runner = std::make_unique<TraceRunner>(scene);
+    auto result = runner->run(view_dirs, view_point, 
+                              (int)options.get("sample"), 
+                              (int)options.get("depth"));
 
     auto output_filename = options["output"];
     std::ofstream fout(output_filename.c_str());
@@ -101,10 +99,10 @@ int main(int argc, char const *argv[]) {
             for(int k = 0 ; k < 3 ; k += 1) {
                 float val = 0;
                 if(!supersample)
-                    val = runner->result[(x * height + y) * 3 + k];
+                    val = result[(x * height + y) * 3 + k];
                 else {
                     for(int i = 0 ; i < 4 ; i += 1)
-                        val += runner->result[((x * height + y) * 4 + i) * 3 + k];
+                        val += result[((x * height + y) * 4 + i) * 3 + k];
                     val /= 4.0;
                 }
                 val *= (float)options.get("brightness");
