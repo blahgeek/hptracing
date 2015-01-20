@@ -53,7 +53,7 @@ namespace hp {
 
     public:
         std::unique_ptr<Node> root = nullptr;
-        KDTree(std::string filename, float diffuse);
+        KDTree(std::string filename);
         std::pair<std::vector<KDTreeNodeHeader>, std::vector<cl_int>>
             getData();
     };

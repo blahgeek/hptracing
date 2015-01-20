@@ -39,7 +39,7 @@ namespace hp {
         std::vector<std::string> texture_names;
         std::vector<uint8_t> texture_data;
 
-        Scene(std::string filename, float diffuse);
+        Scene(std::string filename);
 
     };
 

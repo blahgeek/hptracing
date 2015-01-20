@@ -250,6 +250,7 @@ __kernel void s1_run(__global int * v_sizes,
                 #else
                      __global unsigned char * textures,
                 #endif
+                     const int disable_diffuse,
                      __global long * v_seed) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S1_SIZE_OFFSET]) return;
@@ -345,7 +346,7 @@ __kernel void s1_run(__global int * v_sizes,
     #endif
     }
 
-    if(rand_num < mat.diffuse_possibility) {
+    if(rand_num < mat.diffuse_possibility && disable_diffuse == 0) {
         // diffuse!
         int index = atomic_inc(v_sizes + S2_DIFFUSE_SIZE_OFFSET);
         v_s2_diffuse[index] = this_id;

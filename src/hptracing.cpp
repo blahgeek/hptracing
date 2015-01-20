@@ -30,7 +30,7 @@ int main(int argc, char const *argv[]) {
     parser.add_option("-s", "--sample").dest("sample").type("int").set_default(10);
     parser.add_option("-d", "--depth").dest("depth").type("int").set_default(6);
     parser.add_option("--brightness").dest("brightness").type("float").set_default(1.0);
-    parser.add_option("--diffuse-factor").dest("diffuse").type("float").set_default(0.9);
+    parser.add_option("--no-diffuse").dest("no-diffuse").action("store_true").set_default("0");
     parser.add_option("-o", "--output").dest("output").set_default("out.ppm");
 
     optparse::Values options = parser.parse_args(argc, argv);
@@ -38,7 +38,7 @@ int main(int argc, char const *argv[]) {
 
     TickTock timer;
 
-    auto scene = std::make_unique<KDTree>(options["input"], (float)options.get("diffuse"));
+    auto scene = std::make_unique<KDTree>(options["input"]);
     timer.timeit("Build KDTree done.");
     
     string view_point_str = options["view"];
@@ -88,7 +88,8 @@ int main(int argc, char const *argv[]) {
     auto runner = std::make_unique<TraceRunner>(scene);
     auto result = runner->run(view_dirs, view_point, 
                               (int)options.get("sample"), 
-                              (int)options.get("depth"));
+                              (int)options.get("depth"),
+                              (int)options.get("no-diffuse"));
 
     auto output_filename = options["output"];
     std::ofstream fout(output_filename.c_str());

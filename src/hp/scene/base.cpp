@@ -34,7 +34,7 @@ using namespace hp;
 int Scene::texture_width = 512;
 int Scene::texture_height = 512;
 
-Scene::Scene(std::string filename, float diffuse) {
+Scene::Scene(std::string filename) {
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> mats;
 
@@ -66,13 +66,15 @@ Scene::Scene(std::string filename, float diffuse) {
             }
         }
 
+    #define DIFFUSE_FACTOR 0.9f // relative to (diffuse + light)
+
         Number specular_length = NORM(mat.specular);
         Number diffuse_length = NORM(mat.diffuse);
         Number refract_length = 1.0f - mat.dissolve;
         Number sum = specular_length + diffuse_length + refract_length + 1e-4;
         x.specular_possibility = specular_length / sum;
         x.refract_possibility = refract_length / sum + x.specular_possibility;
-        x.diffuse_possibility = diffuse_length * diffuse / sum + x.refract_possibility;
+        x.diffuse_possibility = diffuse_length * DIFFUSE_FACTOR / sum + x.refract_possibility;
         // x.diffuse_possibility = x.refract_possibility;
         this->materials.push_back(x);
     }

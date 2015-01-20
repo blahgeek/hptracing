@@ -96,7 +96,8 @@ uint64_t GetTimeStamp() {
     return tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
 }
 
-std::vector<cl_float> TraceRunner::run(std::vector<cl_float3> & view_dir, cl_float3 view_p, int sample, int depth) {
+std::vector<cl_float> TraceRunner::run(std::vector<cl_float3> & view_dir, cl_float3 view_p, 
+                                       int sample, int depth, int disable_diffuse) {
     cl::CommandQueue queue = cl::CommandQueue(context, devices[0]);
 
     std::vector<unit_data> unit_data_all(view_dir.size());
@@ -233,6 +234,7 @@ std::vector<cl_float> TraceRunner::run(std::vector<cl_float3> & view_dir, cl_flo
                           texcoords_vbuf.second,
                           materials_vbuf.first,
                           texture_mem,
+                          disable_diffuse,
                           rand_seed_vbuf.first);
             if(v_sizes[1])
                 ND_RANGE(queue, kernel, v_sizes[1]);

@@ -52,7 +52,8 @@ namespace hp {
         std::vector<cl_float> run(std::vector<cl_float3> & view_dir, 
                                   cl_float3 view_p, 
                                   int sample = 10,
-                                  int depth = 6);
+                                  int depth = 6,
+                                  int disable_diffuse = 0);
     };
 
 }
