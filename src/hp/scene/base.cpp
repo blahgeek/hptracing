@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-19
+* @Last Modified time: 2015-01-20
 */
 
 #include <iostream>
@@ -34,7 +34,7 @@ using namespace hp;
 int Scene::texture_width = 512;
 int Scene::texture_height = 512;
 
-Scene::Scene(std::string filename) {
+Scene::Scene(std::string filename, float diffuse) {
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> mats;
 
@@ -55,8 +55,15 @@ Scene::Scene(std::string filename) {
         x.texture_id = -1;
 
         if(mat.diffuse_texname.length() > 0) {
-            x.texture_id = texture_names.size();
-            texture_names.push_back(mat.diffuse_texname);
+            auto found = std::find(texture_names.begin(),
+                                   texture_names.end(),
+                                   mat.diffuse_texname);
+            if(found != texture_names.end())
+                x.texture_id = found - texture_names.begin();
+            else {
+                x.texture_id = texture_names.size();
+                texture_names.push_back(mat.diffuse_texname);
+            }
         }
 
         Number specular_length = NORM(mat.specular);
@@ -65,7 +72,7 @@ Scene::Scene(std::string filename) {
         Number sum = specular_length + diffuse_length + refract_length + 1e-4;
         x.specular_possibility = specular_length / sum;
         x.refract_possibility = refract_length / sum + x.specular_possibility;
-        x.diffuse_possibility = diffuse_length * 0.9f / sum + x.refract_possibility;
+        x.diffuse_possibility = diffuse_length * diffuse / sum + x.refract_possibility;
         // x.diffuse_possibility = x.refract_possibility;
         this->materials.push_back(x);
     }

@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-18
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-19
+* @Last Modified time: 2015-01-20
 */
 
 #include <iostream>
@@ -29,6 +29,8 @@ int main(int argc, char const *argv[]) {
     parser.add_option("-x", "--supersample").dest("supersample").action("store_true").set_default("0");
     parser.add_option("-s", "--sample").dest("sample").type("int").set_default(10);
     parser.add_option("-d", "--depth").dest("depth").type("int").set_default(6);
+    parser.add_option("--brightness").dest("brightness").type("float").set_default(1.0);
+    parser.add_option("--diffuse-factor").dest("diffuse").type("float").set_default(0.9);
     parser.add_option("-o", "--output").dest("output").set_default("out.ppm");
 
     optparse::Values options = parser.parse_args(argc, argv);
@@ -36,7 +38,7 @@ int main(int argc, char const *argv[]) {
 
     TickTock timer;
 
-    auto scene = std::make_unique<KDTree>(options["input"]);
+    auto scene = std::make_unique<KDTree>(options["input"], (float)options.get("diffuse"));
     timer.timeit("Build KDTree done.");
     
     string view_point_str = options["view"];
@@ -105,6 +107,7 @@ int main(int argc, char const *argv[]) {
                         val += runner->result[((x * height + y) * 4 + i) * 3 + k];
                     val /= 4.0;
                 }
+                val *= (float)options.get("brightness");
                 fout << int(255 * (1.0 - std::exp(-val))) << " ";
             }
         }

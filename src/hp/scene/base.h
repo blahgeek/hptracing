@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-19
+* @Last Modified time: 2015-01-20
 */
 
 #ifndef __hp_scene_cl_base_h__
@@ -39,7 +39,7 @@ namespace hp {
         std::vector<std::string> texture_names;
         std::vector<uint8_t> texture_data;
 
-        Scene(std::string filename);
+        Scene(std::string filename, float diffuse);
 
     };
 
