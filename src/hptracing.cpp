@@ -84,12 +84,17 @@ int main(int argc, char const *argv[]) {
             }
         }
     }
+    timer.timeit("Prepare view rays done");
 
     auto runner = std::make_unique<TraceRunner>(scene);
+    timer.timeit("Init OpenCL hardware & memories done");
+
     auto result = runner->run(view_dirs, view_point, 
                               (int)options.get("sample"), 
                               (int)options.get("depth"),
                               (int)options.get("no-diffuse"));
+
+    timer.timeit("1 image generated");
 
     auto output_filename = options["output"];
     std::ofstream fout(output_filename.c_str());
@@ -113,6 +118,8 @@ int main(int argc, char const *argv[]) {
         fout << "\n";
     }
     fout.close();
+
+    timer.timeit("Write to output done");
 
     return 0;
 }
