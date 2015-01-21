@@ -194,9 +194,16 @@ __kernel void kdtree_intersect(__global int * v_sizes,
         // no intersect
         __global float * target = v_result + s0.orig_id * 3;
         float3 val = background_color * s0.strength * sample_n;
-        target[0] += val.x;
-        target[1] += val.y;
-        target[2] += val.z;
+        if(sample_n == 1) {
+            target[0] += val.x;
+            target[1] += val.y;
+            target[2] += val.z;
+        } else {
+            // The first run
+            target[0] = val.x;
+            target[1] = val.y;
+            target[2] = val.z;
+        }
     }
 }
 

@@ -103,11 +103,11 @@ static void displayFunc() {
 
     glColor3f(1.f, 1.f, 1.f);
     printString("hpTracing by BlahGeek", 195);
-    printString(ssprintf("Eye   : (%.2f %.2f %.2f)", 
+    printString(ssprintf(" --view=%.2f,%.2f,%.2f", 
                 view_point.s[0], view_point.s[1], view_point.s[2]), 170);
-    printString(ssprintf("Up    : (%.2f %.2f %.2f)", 
+    printString(ssprintf("   --up=%.2f,%.2f,%.2f", 
                 up_dir.s[0], up_dir.s[1], up_dir.s[2]), 155);
-    printString(ssprintf("Right : (%.2f %.2f %.2f)", 
+    printString(ssprintf("--right=%.2f,%.2f,%.2f", 
                 right_dir.s[0], right_dir.s[1], right_dir.s[2]), 140);
     printString(ssprintf("%dx%d, %d samples", width, height, sample), 115);
     printString(ssprintf("Translate step: %.2f", translate_step), 100);
