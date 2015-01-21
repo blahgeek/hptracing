@@ -127,7 +127,7 @@ std::vector<unsigned char> TraceRunner::run(cl_float3 view_p, cl_float3 top_dir,
                          sizeof(cl_int) * 10);
 
     std::vector<cl_int> initial_s0(ray_count);
-    for(size_t i = 0 ; i < ray_count ; i += 1)
+    for(int i = 0 ; i < ray_count ; i += 1)
         initial_s0[i] = i;
 
     auto stage_cache_vbuf = vec2buf(initial_s0);
@@ -142,7 +142,7 @@ std::vector<unsigned char> TraceRunner::run(cl_float3 view_p, cl_float3 top_dir,
 
     // Random seeds
     std::vector<cl_long> random_seeds(ray_count);
-    for(size_t i = 0 ; i < ray_count ; i += 1)
+    for(int i = 0 ; i < ray_count ; i += 1)
         random_seeds[i] = rand();
     auto rand_seed_vbuf = vec2buf(random_seeds, false);
 
