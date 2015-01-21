@@ -57,6 +57,7 @@ namespace hp {
                  cl_float height,
                  int sample_x, int sample_y,
                  int supersample_x, int supersample_y,
+                 cl_float3 background_color,
                  int sample = 10,
                  int depth = 6,
                  int disable_diffuse = 0,

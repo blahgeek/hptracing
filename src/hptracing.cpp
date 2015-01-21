@@ -46,6 +46,7 @@ cl_float3 up_dir, right_dir;
 int width, height;
 float angle;
 bool supersample;
+cl_float3 background_color;
 int sample, depth;
 bool no_diffuse;
 float brightness;
@@ -72,6 +73,7 @@ static void runit() {
     runner->run(pixels, view_point, up_dir, right_dir,
                 float(width) / float(height) * angle, angle,
                 width, height, supersample?2:1, supersample?2:1,
+                background_color,
                 sample, depth, no_diffuse?1:0, brightness);
     timer.timeit("Render done");
 }
@@ -217,6 +219,7 @@ int main(int argc, char **argv) {
     parser.add_option("-d", "--depth").dest("depth").type("int").set_default(6);
     parser.add_option("--brightness").dest("brightness").type("float").set_default(1.0);
     parser.add_option("--no-diffuse").dest("no-diffuse").action("store_true").set_default("0");
+    parser.add_option("--background").dest("background").set_default("0,0,0");
     parser.add_option("-o", "--output").dest("output").set_default("");
 
     optparse::Values options = parser.parse_args(argc, argv);
@@ -236,6 +239,7 @@ int main(int argc, char **argv) {
     height = (int)options.get("height");
     angle = (float)options.get("angle");
     supersample = options.get("supersample");
+    background_color = str2float3(options["background"]);
     sample = (int)options.get("sample");
     depth = (int)options.get("depth");
     no_diffuse = (bool)options.get("no-diffuse");

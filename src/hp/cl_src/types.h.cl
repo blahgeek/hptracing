@@ -25,7 +25,8 @@ typedef struct {
     float dissolve;
     float shininess;
 
-    int texture_id;
+    int diffuse_texture_id;
+    int ambient_texture_id;
 
     float specular_possibility;
     float refract_possibility;

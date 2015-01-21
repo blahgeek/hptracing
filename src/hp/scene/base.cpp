@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-20
+* @Last Modified time: 2015-01-21
 */
 
 #include <iostream>
@@ -52,17 +52,30 @@ Scene::Scene(std::string filename) {
         x.optical_density = mat.ior;
         x.dissolve = mat.dissolve;
         x.shininess = mat.shininess;
-        x.texture_id = -1;
+        x.diffuse_texture_id = -1;
+        x.ambient_texture_id = -1;
 
         if(mat.diffuse_texname.length() > 0) {
             auto found = std::find(texture_names.begin(),
                                    texture_names.end(),
                                    mat.diffuse_texname);
             if(found != texture_names.end())
-                x.texture_id = found - texture_names.begin();
+                x.diffuse_texture_id = found - texture_names.begin();
             else {
-                x.texture_id = texture_names.size();
+                x.diffuse_texture_id = texture_names.size();
                 texture_names.push_back(mat.diffuse_texname);
+            }
+        }
+
+        if(mat.ambient_texname.length() > 0) {
+            auto found = std::find(texture_names.begin(),
+                                   texture_names.end(),
+                                   mat.ambient_texname);
+            if(found != texture_names.end())
+                x.ambient_texture_id = found - texture_names.begin();
+            else {
+                x.ambient_texture_id = texture_names.size();
+                texture_names.push_back(mat.ambient_texname);
             }
         }
 
@@ -162,7 +175,12 @@ void Scene::registerGeometry(cl_int4 triangle) {
 #define LIGHTS_TOTAL_NUMBER 256
 
 void Scene::finishRegister() {
-    hp_assert(lights_map.size() > 0);
+    if(lights_map.size() == 0) {
+        hp_log("WARNING: No emission material in scene!!!");
+        lights.clear();
+        return;
+    }
+    // hp_assert(lights_map.size() > 0);
     for(int i = 0 ; i < LIGHTS_TOTAL_NUMBER ; i += 1) {
         Number val = Number(i) / Number(LIGHTS_TOTAL_NUMBER) * total_light_val;
         auto target = lights_map.upper_bound(val);

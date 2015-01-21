@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-19
+* @Last Modified time: 2015-01-21
 */
 
 #ifndef __hp_unit_types_h__
@@ -36,7 +36,8 @@ typedef struct {
     cl_float dissolve;
     cl_float shininess;
 
-    cl_int texture_id;
+    cl_int diffuse_texture_id;
+    cl_int ambient_texture_id;
 
     cl_float specular_possibility;
     cl_float refract_possibility;

@@ -101,6 +101,7 @@ void TraceRunner::run(unsigned char * result_data,
                       cl_float width, cl_float height,
                       int sample_x, int sample_y,
                       int supersample_x, int supersample_y,
+                      cl_float3 background_color,
                       int sample, int depth, int disable_diffuse,
                       cl_float brightness) {
 
@@ -169,7 +170,9 @@ void TraceRunner::run(unsigned char * result_data,
                   geometries_vbuf.first,
                   kdtree_leaf_data_vbuf.first,
                   kdtree_node_vbuf.first,
-                  kdtree_node_vbuf.second);
+                  kdtree_node_vbuf.second,
+                  results_mem,
+                  background_color);
     ND_RANGE(queue, kernel, ray_count);
     // queue.enqueueNDRangeKernel(kernel, 0, ray_count, 256);
     queue.finish();
@@ -210,7 +213,9 @@ void TraceRunner::run(unsigned char * result_data,
                           geometries_vbuf.first,
                           kdtree_leaf_data_vbuf.first,
                           kdtree_node_vbuf.first,
-                          kdtree_node_vbuf.second);
+                          kdtree_node_vbuf.second,
+                          results_mem,
+                          background_color);
             if(v_sizes[0])
                 ND_RANGE(queue, kernel, v_sizes[0]);
                 // queue.enqueueNDRangeKernel(kernel, 0, v_sizes[0], 256);

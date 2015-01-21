@@ -116,7 +116,9 @@ __kernel void kdtree_intersect(__global int * v_sizes,
                                __global int4 * scene_mesh,
                                __global int * v_kd_leaf_data,
                                __global KDTreeNodeHeader * v_kd_node_header,
-                               const int kd_node_size) {
+                               const int kd_node_size,
+                               __global float * v_result, // store final result
+                               const float3 background_color) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S0_SIZE_OFFSET]) return;
 
@@ -186,6 +188,13 @@ __kernel void kdtree_intersect(__global int * v_sizes,
 
         v_data[this_id].geometry = scene_mesh[geo_id];
         v_data[this_id].intersect_number = intersect_number;
+    } else {
+        // no intersect
+        __global float * target = v_result + s0.orig_id * 3;
+        float3 val = background_color * s0.strength;
+        target[0] += val.x;
+        target[1] += val.y;
+        target[2] += val.z;
     }
 }
 
@@ -266,24 +275,49 @@ __kernel void s1_run(__global int * v_sizes,
     float3 intersect_p = s1.start_p + s1.intersect_number * s1.in_dir;
 
     float area1, area2, area3;
+    float3 f1 = geo_a - intersect_p;
+    float3 f2 = geo_b - intersect_p;
+    float3 f3 = geo_c - intersect_p;
+    float area_all = length(cross(geo_b - geo_a, geo_c - geo_a));
+    area1 = length(cross(f2, f3)) / area_all;
+    area2 = length(cross(f1, f3)) / area_all;
+    area3 = length(cross(f1, f2)) / area_all;
 
     float3 normal;
     if(scene_normals_size == 0) {
         normal = normalize(cross(geo_b - geo_a, geo_c - geo_a));
     } else {
-        float3 f1 = geo_a - intersect_p;
-        float3 f2 = geo_b - intersect_p;
-        float3 f3 = geo_c - intersect_p;
-        float area_all = length(cross(geo_b - geo_a, geo_c - geo_a));
-        area1 = length(cross(f2, f3)) / area_all;
-        area2 = length(cross(f1, f3)) / area_all;
-        area3 = length(cross(f1, f2)) / area_all;
         normal = area1 * scene_normals[s1.geometry.x] + 
                  area2 * scene_normals[s1.geometry.y] +
                  area3 * scene_normals[s1.geometry.z];
     }
 
-    float3 result = s1.strength * (mat.ambient + mat.emission);
+    float2 uv;
+    if(mat.ambient_texture_id >= 0 || mat.diffuse_texture_id >= 0) {
+        if(scene_texcoords_size == 0) {
+            uv = normalize(intersect_p.xy);
+        } else {
+            uv = area1 * scene_texcoords[s1.geometry.x] +
+                 area2 * scene_texcoords[s1.geometry.y] +
+                 area3 * scene_texcoords[s1.geometry.z];
+        }
+    }
+
+    float3 ambient = mat.ambient;
+    if(mat.ambient_texture_id >= 0) {
+    #ifdef CL_VERSION_1_2
+        ambient = read_imagef(textures, sampler, 
+                              (float4)(uv.x, uv.y, mat.ambient_texture_id, 0)).xyz;
+    #else
+        __global unsigned char * texture_p = textures + 4 * 512 * 512 * mat.ambient_texture_id
+                                             + (convert_int(uv.x * 512.f) * 512 + convert_int(uv.y * 512.f)) * 4;
+        ambient.x = convert_float(texture_p[0]) / 255.0f;
+        ambient.y = convert_float(texture_p[1]) / 255.0f;
+        ambient.z = convert_float(texture_p[2]) / 255.0f;
+    #endif
+    }
+
+    float3 result = s1.strength * (ambient + mat.emission);
     result *= fabs(dot(normal, s1.in_dir));
 
     __global float * target = v_result + s1.orig_id * 3;
@@ -325,20 +359,12 @@ __kernel void s1_run(__global int * v_sizes,
     }
 
     float3 diffuse = mat.diffuse;
-    if(mat.texture_id >= 0) {
-        float2 uv;
-        if(scene_texcoords_size == 0) {
-            uv = normalize(intersect_p.xy);
-        } else {
-            uv = area1 * scene_texcoords[s1.geometry.x] +
-                 area2 * scene_texcoords[s1.geometry.y] +
-                 area3 * scene_texcoords[s1.geometry.z];
-        }
+    if(mat.diffuse_texture_id >= 0) {
     #ifdef CL_VERSION_1_2
         diffuse = read_imagef(textures, sampler, 
-                              (float4)(uv.x, uv.y, mat.texture_id, 0)).xyz;
+                              (float4)(uv.x, uv.y, mat.diffuse_texture_id, 0)).xyz;
     #else
-        __global unsigned char * texture_p = textures + 4 * 512 * 512 * mat.texture_id
+        __global unsigned char * texture_p = textures + 4 * 512 * 512 * mat.diffuse_texture_id
                                              + (convert_int(uv.x * 512.f) * 512 + convert_int(uv.y * 512.f)) * 4;
         diffuse.x = convert_float(texture_p[0]) / 255.0f;
         diffuse.y = convert_float(texture_p[1]) / 255.0f;
@@ -470,6 +496,7 @@ __kernel void s2_light_run(__global int * v_sizes,
                            __global long * v_seed) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S2_LIGHT_SIZE_OFFSET]) return;
+    if(v_lights_size == 0) return;
 
     int this_id = v_s2_light[global_id];
     unit_data s2 = v_data[this_id];
