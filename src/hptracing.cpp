@@ -18,6 +18,8 @@
 #include "hp/trace_runner.h"
 #include "hp/scene/kdtree.h"
 
+#include <Eigen/Dense>
+
 #include "OptionParser/OptionParser.h"
 
 using namespace std;
@@ -50,6 +52,7 @@ unsigned char * pixels = nullptr;
 int pixels_size = 0;
 
 bool need_rerun = true;
+float translate_step = 1.f;
 
 static void runit() {
     if(!runner) {
@@ -71,20 +74,132 @@ static void runit() {
     timer.timeit("Render done");
 }
 
+static void printString(std::string s, int y = 280, int x = 15) {
+    glRasterPos2i(x, y);
+    for(auto & c: s)
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, c);
+    hp_log(s.c_str());
+}
+
 static void displayFunc() {
     if(pixels == nullptr) return;
     glClear(GL_COLOR_BUFFER_BIT);
     glRasterPos2i(0, 0);
     glDrawPixels(width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(0.f, 0.f, 0.5f, 0.5f);
+    glRecti(0, 0, 200, 210);
+
+    glColor3f(1.f, 1.f, 1.f);
+    printString("hpTracing by BlahGeek", 195);
+    printString(ssprintf("Eye   : (%.2f %.2f %.2f)", 
+                view_point.s[0], view_point.s[1], view_point.s[2]), 170);
+    printString(ssprintf("Up    : (%.2f %.2f %.2f)", 
+                up_dir.s[0], up_dir.s[1], up_dir.s[2]), 155);
+    printString(ssprintf("Right : (%.2f %.2f %.2f)", 
+                right_dir.s[0], right_dir.s[1], right_dir.s[2]), 140);
+    printString(ssprintf("%dx%d, %d samples", width, height, sample), 115);
+    printString(ssprintf("Translate step: %.2f", translate_step), 100);
+    printString(ssprintf("Max depth: %d", depth), 85);
+    printString(ssprintf("No diffuse: %d", no_diffuse), 60);
+    printString(ssprintf("Super-samp: %d", supersample), 45);
+    printString(ssprintf("Brightness: %.2f", brightness), 30);
+
+    glDisable(GL_BLEND);
+
     glutSwapBuffers();
 }
 
-static void idleFunc() {
+static void timerFunc(int _) {
+    glutTimerFunc(10, timerFunc, 0);
     if(!need_rerun) return;
     runit();
     need_rerun = false;
     glutPostRedisplay();
 }
+
+static void rotateView(float alpha, int ax) {
+    Vec v_up_dir, v_right_dir, v_front_dir;
+    ASSIGN_V3(v_up_dir, up_dir);ASSIGN_V3(v_right_dir, right_dir);
+    v_front_dir = v_up_dir.cross(v_right_dir);
+
+    Vec * about = &v_right_dir;
+    if(ax == 2) about = &v_up_dir;
+    if(ax == 3) about = &v_front_dir;
+
+    Eigen::Matrix<float, 3, 3> L;
+    L << 0, (*about)[2], -(*about)[1],
+         -(*about)[2], 0, (*about)[0],
+         (*about)[1], -(*about)[0], 0;
+    Eigen::Matrix<float, 3, 3> m = Eigen::Matrix<float, 3, 3>::Identity();
+    m += std::sin(alpha / 180.0 * PI) * L;
+    m += (1.f - std::cos(alpha / 180.0 * PI)) * (L * L);
+
+    if(&v_up_dir != about) v_up_dir = m * v_up_dir;
+    if(&v_right_dir != about) v_right_dir = m * v_right_dir;
+    if(&v_front_dir != about) v_front_dir = m * v_front_dir;
+
+    ASSIGN_F3(up_dir, v_up_dir);
+    ASSIGN_F3(right_dir, v_right_dir);
+}
+
+static void translateView(float translate, int ax) {
+    Vec v_up_dir, v_right_dir, v_front_dir;
+    ASSIGN_V3(v_up_dir, up_dir);ASSIGN_V3(v_right_dir, right_dir);
+    v_front_dir = v_up_dir.cross(v_right_dir);
+
+    Vec * about = &v_right_dir;
+    if(ax == 2) about = &v_up_dir;
+    if(ax == 3) about = &v_front_dir;
+
+    Vec v_view_point; ASSIGN_V3(v_view_point, view_point);
+    v_view_point += translate * (*about);
+
+    ASSIGN_F3(view_point, v_view_point);
+}
+
+static void keyFunc(unsigned char key, int x, int y) {
+    switch(key) {
+        case 27: // ESC
+            hp_log("ESC pressed, exit");
+            exit(0);
+            break;
+        case 'z':
+            if(angle > 0.1) angle -= 0.1;
+            need_rerun = true;
+            break;
+        case 'x':
+            angle += 0.1;
+            need_rerun = true;
+            break;
+        case 'a': rotateView(-15, 2); need_rerun = true; break;
+        case 'd': rotateView(15, 2); need_rerun = true; break;
+        case 'w': rotateView(-15, 1); need_rerun = true; break;
+        case 's': rotateView(15, 1); need_rerun = true; break;
+        case 'q': rotateView(-15, 3); need_rerun = true; break;
+        case 'e': rotateView(15, 3); need_rerun = true; break;
+
+        case 'k': translateView(translate_step, 3); need_rerun = true; break;
+        case 'j': translateView(-translate_step, 3); need_rerun = true; break;
+
+        case '[': translate_step /= 2.f; break;
+        case ']': translate_step *= 2.f; break;
+
+        case '+': angle += 0.1f; need_rerun = true; break;
+        case '-': angle -= 0.1f; need_rerun = true; break;
+    };
+}
+
+static void specKeyFunc(int key, int x, int y) {
+    switch(key) {
+        case GLUT_KEY_UP: translateView(translate_step, 2); need_rerun = true; break;
+        case GLUT_KEY_DOWN: translateView(-translate_step, 2); need_rerun = true; break;
+        case GLUT_KEY_RIGHT: translateView(translate_step, 1); need_rerun = true; break;
+        case GLUT_KEY_LEFT: translateView(-translate_step, 1); need_rerun = true; break;
+    }
+};
 
 int main(int argc, char **argv) {
     OptionParser parser = OptionParser().description("HPTracing 0.0.1");
@@ -131,12 +246,13 @@ int main(int argc, char **argv) {
     glutInit(&argc, argv);
     glutCreateWindow("hpTracing by BlahGeek");
     glutDisplayFunc(displayFunc);
-    glutIdleFunc(idleFunc);
+    glutTimerFunc(10, timerFunc, 0);
+    // glutIdleFunc(idleFunc);
+    glutKeyboardFunc(keyFunc);
+    glutSpecialFunc(specKeyFunc);
     glViewport(0, 0, width, height);
     glLoadIdentity();
     glOrtho(0.f, width - 1.f, 0.f, height - 1.f, -1.f, 1.f);
-    
-    // runit();
 
     glutMainLoop();
 

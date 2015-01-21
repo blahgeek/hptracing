@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-05
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-19
+* @Last Modified time: 2015-01-21
 */
 
 #ifndef __hp_common_h__
@@ -26,6 +26,12 @@
         (X).s[1] = (Y)[1]; \
         (X).s[2] = (Y)[2]; \
         (X).s[3] = 0; \
+    } while(0)
+#define ASSIGN_V3(X, Y) \
+    do { \
+        (X)[0] = (Y).s[0]; \
+        (X)[1] = (Y).s[1]; \
+        (X)[2] = (Y).s[2]; \
     } while(0)
 
 namespace hp {
