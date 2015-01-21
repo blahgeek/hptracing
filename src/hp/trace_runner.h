@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-20
+* @Last Modified time: 2015-01-21
 */
 
 #ifndef __hp_trace_runner_cl_h__
@@ -49,11 +49,17 @@ namespace hp {
     public:
         TraceRunner(std::unique_ptr<hp::KDTree> & scene);
 
-        std::vector<cl_float> run(std::vector<cl_float3> & view_dir, 
-                                  cl_float3 view_p, 
-                                  int sample = 10,
-                                  int depth = 6,
-                                  int disable_diffuse = 0);
+        std::vector<unsigned char> run(cl_float3 view_p,
+                                       cl_float3 top_dir,
+                                       cl_float3 right_dir,
+                                       cl_float width,
+                                       cl_float height,
+                                       int sample_x, int sample_y,
+                                       int supersample_x, int supersample_y,
+                                       int sample = 10,
+                                       int depth = 6,
+                                       int disable_diffuse = 0,
+                                       cl_float brightness = 1.0);
     };
 
 }

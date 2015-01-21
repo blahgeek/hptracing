@@ -505,3 +505,66 @@ __kernel void s2_light_run(__global int * v_sizes,
     }
     v_seed[global_id] = rand_seed;
 }
+
+__kernel void set_viewdirs(const float3 view_p,
+                           const float3 top_dir,
+                           const float3 right_dir,
+                           const float width,
+                           const float height,
+                           const int sample_x,
+                           const int sample_y,
+                           __global unit_data * result) {
+    int global_id_x = get_global_id(0);
+    int global_id_y = get_global_id(1);
+
+    if(global_id_x > sample_x || global_id_y > sample_y)
+        return;
+
+    float3 norm_dir = cross(top_dir, right_dir);
+    norm_dir += top_dir * (convert_float(global_id_y) / convert_float(sample_y)
+                           * height - height * 0.5f);
+    norm_dir += right_dir * (convert_float(global_id_x) / convert_float(sample_x)
+                             * width - width * 0.5f);
+
+    int index = (sample_y - 1 - global_id_y) * sample_x + global_id_x;
+    result[index].in_dir = normalize(norm_dir);
+    result[index].orig_id = index;
+    result[index].strength = (float3)(1, 1, 1);
+    result[index].start_p = view_p;
+}
+
+__kernel void get_image(__global float * result_mem,
+                        const int supersample_x,
+                        const int supersample_y,
+                        const int sample, 
+                        const float brightness,
+                        __write_only image2d_t img) {
+    int global_id_x = get_global_id(0);
+    int global_id_y = get_global_id(1);
+
+    int width = get_image_width(img);
+    int height = get_image_height(img);
+
+    if(global_id_x >= width || global_id_y >= height)
+        return;
+
+    float4 pixel = (float4)(0, 0, 0, 0);
+    for(int i = 0 ; i < supersample_x ; i += 1) {
+        for(int j = 0 ; j < supersample_y ; j += 1) {
+            int index = (global_id_y * supersample_y) * (width * supersample_x)
+                        + global_id_x * supersample_x;
+            pixel.x += result_mem[index * 3];
+            pixel.y += result_mem[index * 3 + 1];
+            pixel.z += result_mem[index * 3 + 2];
+        }
+    }
+    pixel /= convert_float(supersample_x * supersample_y);
+    pixel /= convert_float(sample);
+    pixel *= brightness;
+
+    pixel.x = 1.f - exp(-pixel.x);
+    pixel.y = 1.f - exp(-pixel.y);
+    pixel.z = 1.f - exp(-pixel.z);
+
+    write_imagef(img, (int2)(global_id_x, global_id_y), pixel);
+}

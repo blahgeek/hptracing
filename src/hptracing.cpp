@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-18
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-20
+* @Last Modified time: 2015-01-21
 */
 
 #include <iostream>
@@ -89,35 +89,50 @@ int main(int argc, char const *argv[]) {
     auto runner = std::make_unique<TraceRunner>(scene);
     timer.timeit("Init OpenCL hardware & memories done");
 
-    auto result = runner->run(view_dirs, view_point, 
-                              (int)options.get("sample"), 
-                              (int)options.get("depth"),
-                              (int)options.get("no-diffuse"));
+    cl_float3 top_dir; ASSIGN_F3(top_dir, Vec(0, 0.8, 0.6));
+    cl_float3 right_dir; ASSIGN_F3(right_dir, Vec(-1, 0, 0));
+
+    auto result = runner->run(view_point, top_dir, right_dir,
+                              1.2f, 1.f, 600, 512, 1, 2,
+                              3, 6, 0, 5.0);
+
+    // auto result = runner->run(view_dirs, view_point, 
+    //                           (int)options.get("sample"), 
+    //                           (int)options.get("depth"),
+    //                           (int)options.get("no-diffuse"));
 
     timer.timeit("1 image generated");
 
     auto output_filename = options["output"];
     std::ofstream fout(output_filename.c_str());
     fout << "P3\n";
-    fout << width << " " << height << "\n255\n";
-    for(int y = height -1 ; y >= 0 ; y -= 1) {
-        for(int x = width - 1 ; x >= 0 ; x -= 1) {
-            for(int k = 0 ; k < 3 ; k += 1) {
-                float val = 0;
-                if(!supersample)
-                    val = result[(x * height + y) * 3 + k];
-                else {
-                    for(int i = 0 ; i < 4 ; i += 1)
-                        val += result[((x * height + y) * 4 + i) * 3 + k];
-                    val /= 4.0;
-                }
-                val *= (float)options.get("brightness");
-                fout << int(255 * (1.0 - std::exp(-val))) << " ";
-            }
+    fout << 600 << " " << 512 << "\n255\n";
+    for(int i = 0 ; i < 512 ; i += 1) {
+        for(int j = 0 ; j < 600 ; j += 1) {
+            for(int k = 0 ; k < 3 ; k += 1)
+                fout << int(result[(i * 600 + j) * 4 + k]) << " ";
         }
         fout << "\n";
     }
     fout.close();
+    // for(int y = height -1 ; y >= 0 ; y -= 1) {
+    //     for(int x = width - 1 ; x >= 0 ; x -= 1) {
+    //         for(int k = 0 ; k < 3 ; k += 1) {
+    //             float val = 0;
+    //             if(!supersample)
+    //                 val = result[(x * height + y) * 3 + k];
+    //             else {
+    //                 for(int i = 0 ; i < 4 ; i += 1)
+    //                     val += result[((x * height + y) * 4 + i) * 3 + k];
+    //                 val /= 4.0;
+    //             }
+    //             val *= (float)options.get("brightness");
+    //             fout << int(255 * (1.0 - std::exp(-val))) << " ";
+    //         }
+    //     }
+    //     fout << "\n";
+    // }
+    // fout.close();
 
     timer.timeit("Write to output done");
 

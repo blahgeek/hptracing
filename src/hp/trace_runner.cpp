@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-20
+* @Last Modified time: 2015-01-21
 */
 
 #include <iostream>
@@ -96,53 +96,59 @@ uint64_t GetTimeStamp() {
     return tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
 }
 
-std::vector<cl_float> TraceRunner::run(std::vector<cl_float3> & view_dir, cl_float3 view_p, 
-                                       int sample, int depth, int disable_diffuse) {
+std::vector<unsigned char> TraceRunner::run(cl_float3 view_p, cl_float3 top_dir, cl_float3 right_dir,
+                                            cl_float width, cl_float height,
+                                            int sample_x, int sample_y,
+                                            int supersample_x, int supersample_y,
+                                            int sample, int depth, int disable_diffuse,
+                                            cl_float brightness) {
+
     cl::CommandQueue queue = cl::CommandQueue(context, devices[0]);
 
-    std::vector<unit_data> unit_data_all(view_dir.size());
+    auto ray_count = sample_x * supersample_x * sample_y * supersample_y;
 
-    for(size_t i = 0 ; i < view_dir.size() ; i += 1) {
-        unit_data x;
-        x.orig_id = i;
-        x.strength.s[0] = x.strength.s[1] = x.strength.s[2] = 1;
-        x.strength.s[3] = 0;
-        x.start_p = view_p;
-        x.in_dir = view_dir[i];
-        unit_data_all[i] = x;
-    }
+    cl::Buffer data_initial_mem(context, CL_MEM_READ_WRITE,
+                                sizeof(unit_data) * ray_count);
+    cl::Kernel kernel_set(program, "set_viewdirs");
+    setKernelArgs(kernel_set, view_p, top_dir, right_dir,
+                  width, height, 
+                  sample_x * supersample_x, sample_y * supersample_y,
+                  data_initial_mem);
+    queue.enqueueNDRangeKernel(kernel_set, 0, 
+                               cl::NDRange(sample_x * supersample_x, sample_y * supersample_y));
+    queue.finish();
 
     // Result data
     cl::Buffer results_mem(context, CL_MEM_READ_WRITE,
-                           sizeof(cl_float) * view_dir.size() * 3);
+                           sizeof(cl_float) * ray_count * 3);
 
     // Units...
     cl::Buffer sizes_mem(context, CL_MEM_READ_WRITE,
                          sizeof(cl_int) * 10);
 
-    std::vector<cl_int> initial_s0(view_dir.size());
-    for(size_t i = 0 ; i < view_dir.size() ; i += 1)
+    std::vector<cl_int> initial_s0(ray_count);
+    for(size_t i = 0 ; i < ray_count ; i += 1)
         initial_s0[i] = i;
 
     auto stage_cache_vbuf = vec2buf(initial_s0);
-    auto data_initial_vbuf = vec2buf(unit_data_all, false);
+    // auto data_initial_vbuf = vec2buf(unit_data_all, false);
 
     cl::Buffer stage_mem[6];
     for(int i = 0 ; i < 6 ; i += 1) 
-        stage_mem[i] = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_int) * unit_data_all.size());
+        stage_mem[i] = cl::Buffer(context, CL_MEM_READ_WRITE, sizeof(cl_int) * ray_count);
 
     cl::Buffer data_mem(context, CL_MEM_READ_WRITE, 
-                        sizeof(unit_data) * view_dir.size(), nullptr);
+                        sizeof(unit_data) * ray_count, nullptr);
 
     // Random seeds
-    std::vector<cl_long> random_seeds(view_dir.size());
-    for(size_t i = 0 ; i < view_dir.size() ; i += 1)
+    std::vector<cl_long> random_seeds(ray_count);
+    for(size_t i = 0 ; i < ray_count ; i += 1)
         random_seeds[i] = rand();
     auto rand_seed_vbuf = vec2buf(random_seeds, false);
 
     // Compute first level intersect and cache stage_s1
     cl_int v_sizes[10] = {0};
-    v_sizes[0] = view_dir.size();
+    v_sizes[0] = ray_count;
     queue.enqueueWriteBuffer(sizes_mem, CL_TRUE, 0, sizeof(cl_int) * 10, v_sizes);
 
 #define WORK_GROUP_SIZE 256
@@ -155,7 +161,7 @@ std::vector<cl_float> TraceRunner::run(std::vector<cl_float3> & view_dir, cl_flo
     cl::Kernel kernel(program, "kdtree_intersect");
     setKernelArgs(kernel, 
                   sizes_mem, 
-                  data_initial_vbuf.first,
+                  data_initial_mem,
                   stage_cache_vbuf.first,
                   stage_mem[1],
                   points_vbuf.first,
@@ -163,12 +169,12 @@ std::vector<cl_float> TraceRunner::run(std::vector<cl_float3> & view_dir, cl_flo
                   kdtree_leaf_data_vbuf.first,
                   kdtree_node_vbuf.first,
                   kdtree_node_vbuf.second);
-    ND_RANGE(queue, kernel, view_dir.size());
-    // queue.enqueueNDRangeKernel(kernel, 0, view_dir.size(), 256);
+    ND_RANGE(queue, kernel, ray_count);
+    // queue.enqueueNDRangeKernel(kernel, 0, ray_count, 256);
     queue.finish();
 
     queue.enqueueReadBuffer(sizes_mem, CL_FALSE, 0, sizeof(cl_int) * 10, v_sizes);
-    queue.enqueueCopyBuffer(stage_mem[1], stage_cache_vbuf.first, 0, 0, sizeof(cl_int) * unit_data_all.size());
+    queue.enqueueCopyBuffer(stage_mem[1], stage_cache_vbuf.first, 0, 0, sizeof(cl_int) * ray_count);
     queue.finish();
     auto intial_s1_size = v_sizes[1];
 
@@ -184,8 +190,8 @@ std::vector<cl_float> TraceRunner::run(std::vector<cl_float3> & view_dir, cl_flo
         v_sizes[1] = intial_s1_size;
 
         queue.enqueueWriteBuffer(sizes_mem, CL_FALSE, 0, sizeof(cl_int) * 10, v_sizes);
-        queue.enqueueCopyBuffer(data_initial_vbuf.first, data_mem, 0, 0, sizeof(unit_data) * unit_data_all.size());
-        queue.enqueueCopyBuffer(stage_cache_vbuf.first, stage_mem[1], 0, 0, sizeof(cl_int) * unit_data_all.size());
+        queue.enqueueCopyBuffer(data_initial_mem, data_mem, 0, 0, sizeof(unit_data) * ray_count);
+        queue.enqueueCopyBuffer(stage_cache_vbuf.first, stage_mem[1], 0, 0, sizeof(cl_int) * ray_count);
         queue.finish();
 
         for(int i = 0 ; i < depth ; i += 1) {
@@ -293,12 +299,24 @@ std::vector<cl_float> TraceRunner::run(std::vector<cl_float3> & view_dir, cl_flo
 
     hp_log("Time: s0 %llu, s1 %llu, s2 %llu", s0_time, s1_time, s2_time);
 
-    std::vector<cl_float> result(view_dir.size() * 3, 0);
-    // result.resize(view_dir.size() * 3, 0);
-    queue.enqueueReadBuffer(results_mem, CL_TRUE, 0, sizeof(cl_float) * view_dir.size() * 3, result.data());
+    cl::Image2D result_img(context, CL_MEM_WRITE_ONLY,
+                           cl::ImageFormat(CL_RGBA, CL_UNORM_INT8),
+                           sample_x, sample_y);
+    cl::Kernel kernel_result(program, "get_image");
+    setKernelArgs(kernel_result, 
+                  results_mem, 
+                  supersample_x, supersample_y, 
+                  static_cast<cl_int>(sample), 
+                  brightness, result_img);
+    queue.enqueueNDRangeKernel(kernel_result, 0, 
+                               cl::NDRange(sample_x, sample_y));
+    queue.finish();
 
-    for(size_t i = 0 ; i < result.size() ; i += 1)
-        result[i] /= float(sample);
+    std::vector<unsigned char> result(sample_x * sample_y * 4);
+    cl::size_t<3> orig_s; orig_s[0] = orig_s[1] = 0;
+    cl::size_t<3> size_s; size_s[0] = sample_x; size_s[1] = sample_y; size_s[2] = 1;
+    queue.enqueueReadImage(result_img, CL_TRUE, orig_s, size_s,
+                           4 * sample_x, 0, result.data());
 
     return result;
 }
