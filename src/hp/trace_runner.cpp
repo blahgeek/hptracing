@@ -42,6 +42,8 @@ TraceRunner::TraceRunner(std::unique_ptr<hp::KDTree> & scene) {
     context = cl::Context(CL_DEVICE_TYPE_GPU);
     devices = context.getInfo<CL_CONTEXT_DEVICES>();
 
+    hp_log("devices: %d", devices.size());
+
     std::string sources;
     sources.resize(src_hp___cl_src_types_h_cl_len + src_hp___cl_src_kernel_cl_len);
     memcpy(static_cast<void *>(&sources.front()), 
@@ -84,9 +86,13 @@ TraceRunner::TraceRunner(std::unique_ptr<hp::KDTree> & scene) {
                                         1, 1, 1, 0, 0);
 #else
     if(scene->texture_names.size() > 0)
-        texture_mem = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                 4 * Scene::texture_width * Scene::texture_height * scene->texture_names.size(),
-                                 scene->texture_data.data());
+        texture_mem = cl::Image3D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                  cl::ImageFormat(CL_RGBA, CL_UNORM_INT8), 
+                                  Scene::texture_width, Scene::texture_height,
+                                  scene->texture_names.size(), 0, 0, scene->texture_data.data());
+        //texture_mem = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                 //4 * Scene::texture_width * Scene::texture_height * scene->texture_names.size(),
+                                 //scene->texture_data.data());
 #endif
 }
 

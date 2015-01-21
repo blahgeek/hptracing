@@ -43,7 +43,8 @@ namespace hp {
         #ifdef CL_VERSION_1_2
         cl::Image2DArray texture_mem;
         #else
-        cl::Buffer texture_mem;
+        cl::Image3D texture_mem;
+        //cl::Buffer texture_mem;
         #endif
 
     public:
