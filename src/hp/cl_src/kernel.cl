@@ -118,7 +118,9 @@ __kernel void kdtree_intersect(__global int * v_sizes,
                                __global KDTreeNodeHeader * v_kd_node_header,
                                const int kd_node_size,
                                __global float * v_result, // store final result
-                               const float3 background_color) {
+                               const float3 background_color,
+                               // sample_n is only given at first run
+                               const int sample_n) {
     int global_id = get_global_id(0);
     if(global_id >= v_sizes[S0_SIZE_OFFSET]) return;
 
@@ -191,7 +193,7 @@ __kernel void kdtree_intersect(__global int * v_sizes,
     } else {
         // no intersect
         __global float * target = v_result + s0.orig_id * 3;
-        float3 val = background_color * s0.strength;
+        float3 val = background_color * s0.strength * sample_n;
         target[0] += val.x;
         target[1] += val.y;
         target[2] += val.z;

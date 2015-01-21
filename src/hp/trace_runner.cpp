@@ -172,7 +172,8 @@ void TraceRunner::run(unsigned char * result_data,
                   kdtree_node_vbuf.first,
                   kdtree_node_vbuf.second,
                   results_mem,
-                  background_color);
+                  background_color,
+                  sample);
     ND_RANGE(queue, kernel, ray_count);
     // queue.enqueueNDRangeKernel(kernel, 0, ray_count, 256);
     queue.finish();
@@ -215,7 +216,8 @@ void TraceRunner::run(unsigned char * result_data,
                           kdtree_node_vbuf.first,
                           kdtree_node_vbuf.second,
                           results_mem,
-                          background_color);
+                          background_color,
+                          (cl_int)1);
             if(v_sizes[0])
                 ND_RANGE(queue, kernel, v_sizes[0]);
                 // queue.enqueueNDRangeKernel(kernel, 0, v_sizes[0], 256);
