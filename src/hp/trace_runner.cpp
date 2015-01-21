@@ -96,12 +96,13 @@ uint64_t GetTimeStamp() {
     return tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
 }
 
-std::vector<unsigned char> TraceRunner::run(cl_float3 view_p, cl_float3 top_dir, cl_float3 right_dir,
-                                            cl_float width, cl_float height,
-                                            int sample_x, int sample_y,
-                                            int supersample_x, int supersample_y,
-                                            int sample, int depth, int disable_diffuse,
-                                            cl_float brightness) {
+void TraceRunner::run(unsigned char * result_data,
+                      cl_float3 view_p, cl_float3 top_dir, cl_float3 right_dir,
+                      cl_float width, cl_float height,
+                      int sample_x, int sample_y,
+                      int supersample_x, int supersample_y,
+                      int sample, int depth, int disable_diffuse,
+                      cl_float brightness) {
 
     cl::CommandQueue queue = cl::CommandQueue(context, devices[0]);
 
@@ -312,11 +313,8 @@ std::vector<unsigned char> TraceRunner::run(cl_float3 view_p, cl_float3 top_dir,
                                cl::NDRange(sample_x, sample_y));
     queue.finish();
 
-    std::vector<unsigned char> result(sample_x * sample_y * 4);
     cl::size_t<3> orig_s; orig_s[0] = orig_s[1] = 0;
     cl::size_t<3> size_s; size_s[0] = sample_x; size_s[1] = sample_y; size_s[2] = 1;
     queue.enqueueReadImage(result_img, CL_TRUE, orig_s, size_s,
-                           4 * sample_x, 0, result.data());
-
-    return result;
+                           4 * sample_x, 0, result_data);
 }

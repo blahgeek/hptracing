@@ -5,6 +5,12 @@
 * @Last Modified time: 2015-01-21
 */
 
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+#else
+#include <GL/glut.h>
+#endif
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -28,7 +34,59 @@ static cl_float3 str2float3(std::string s) {
     return ret;
 }
 
-int main(int argc, char const *argv[]) {
+// runner
+std::unique_ptr<TraceRunner> runner = nullptr;
+// options
+cl_float3 view_point;
+cl_float3 up_dir, right_dir;
+int width, height;
+float angle;
+bool supersample;
+int sample, depth;
+bool no_diffuse;
+float brightness;
+// results
+unsigned char * pixels = nullptr;
+int pixels_size = 0;
+
+bool need_rerun = true;
+
+static void runit() {
+    if(!runner) {
+        hp_log("WARNING: Runner is not ready");
+        return;
+    }
+    if(pixels == nullptr || pixels_size != width * height * 4) {
+        if(pixels) delete [] pixels;
+        pixels_size = width * height * 4;
+        pixels = new unsigned char [pixels_size];
+    }
+    hp_log("Rendering image... %dx%d, %d samples, max-depth %d",
+           width, height, sample, depth);
+    TickTock timer;
+    runner->run(pixels, view_point, up_dir, right_dir,
+                float(width) / float(height) * angle, angle,
+                width, height, supersample?2:1, supersample?2:1,
+                sample, depth, no_diffuse?1:0, brightness);
+    timer.timeit("Render done");
+}
+
+static void displayFunc() {
+    if(pixels == nullptr) return;
+    glClear(GL_COLOR_BUFFER_BIT);
+    glRasterPos2i(0, 0);
+    glDrawPixels(width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glutSwapBuffers();
+}
+
+static void idleFunc() {
+    if(!need_rerun) return;
+    runit();
+    need_rerun = false;
+    glutPostRedisplay();
+}
+
+int main(int argc, char **argv) {
     OptionParser parser = OptionParser().description("HPTracing 0.0.1");
     parser.add_option("-i", "--input").dest("input");
     parser.add_option("--width").dest("width").type("int").set_default(500);
@@ -51,43 +109,51 @@ int main(int argc, char const *argv[]) {
 
     auto scene = std::make_unique<KDTree>(options["input"]);
     timer.timeit("Build KDTree done.");
-    
-    bool supersample = options.get("supersample");
-    int width = (int)options.get("width");
-    int height = (int)options.get("height");
-
-    auto runner = std::make_unique<TraceRunner>(scene);
+    runner = std::make_unique<TraceRunner>(scene);
     timer.timeit("Init OpenCL hardware & memories done");
 
-    auto result = runner->run(str2float3(options["view"]), 
-                              str2float3(options["up"]), 
-                              str2float3(options["right"]),
-                              float(width) / float(height) * (float)options.get("angle"),
-                              (float)options.get("angle"),
-                              width, height,
-                              supersample ? 2 : 1,
-                              supersample ? 2 : 1,
-                              (int)options.get("sample"),
-                              (int)options.get("depth"),
-                              (int)options.get("no-diffuse"),
-                              (float)options.get("brightness"));
+    view_point = str2float3(options["view"]);
+    up_dir = str2float3(options["up"]);
+    right_dir = str2float3(options["right"]);
+    width = (int)options.get("width");
+    height = (int)options.get("height");
+    angle = (float)options.get("angle");
+    supersample = options.get("supersample");
+    sample = (int)options.get("sample");
+    depth = (int)options.get("depth");
+    no_diffuse = (bool)options.get("no-diffuse");
+    brightness = (float)options.get("brightness");
 
-    timer.timeit("1 image generated");
+    // init GLUT
+    glutInitWindowSize(width, height);
+    glutInitWindowPosition(0,0);
+    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
+    glutInit(&argc, argv);
+    glutCreateWindow("hpTracing by BlahGeek");
+    glutDisplayFunc(displayFunc);
+    glutIdleFunc(idleFunc);
+    glViewport(0, 0, width, height);
+    glLoadIdentity();
+    glOrtho(0.f, width - 1.f, 0.f, height - 1.f, -1.f, 1.f);
+    
+    // runit();
 
-    auto output_filename = options["output"];
-    std::ofstream fout(output_filename.c_str());
-    fout << "P3\n";
-    fout << width << " " << height << "\n255\n";
-    for(int i = 0 ; i < height ; i += 1) {
-        for(int j = 0 ; j < width ; j += 1) {
-            for(int k = 0 ; k < 3 ; k += 1)
-                fout << int(result[(i * width + j) * 4 + k]) << " ";
-        }
-        fout << "\n";
-    }
-    fout.close();
+    glutMainLoop();
 
-    timer.timeit("Write to output done");
+    // auto output_filename = options["output"];
+    // std::ofstream fout(output_filename.c_str());
+    // fout << "P3\n";
+    // fout << width << " " << height << "\n255\n";
+    // for(int i = 0 ; i < height ; i += 1) {
+    //     for(int j = 0 ; j < width ; j += 1) {
+    //         for(int k = 0 ; k < 3 ; k += 1)
+    //             fout << int(pixels[(i * width + j) * 4 + k]) << " ";
+    //     }
+    //     fout << "\n";
+    // }
+    // fout.close();
+
+    // timer.timeit("Write to output done");
 
     return 0;
 }

@@ -566,5 +566,5 @@ __kernel void get_image(__global float * result_mem,
     pixel.y = 1.f - exp(-pixel.y);
     pixel.z = 1.f - exp(-pixel.z);
 
-    write_imagef(img, (int2)(global_id_x, global_id_y), pixel);
+    write_imagef(img, (int2)(global_id_x, height - 1 - global_id_y), pixel);
 }

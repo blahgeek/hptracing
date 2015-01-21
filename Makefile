@@ -12,7 +12,7 @@ SRC_EXT = cpp
 CPPFLAGS += $(shell pkg-config --libs --cflags eigen3)
 override OPTFLAG ?= -O3
 
-LDFLAGS = -framework OpenCL
+LDFLAGS = -framework OpenCL -framework GLUT -framework OpenGL
 
 override CXXFLAGS += \
 	-ggdb \

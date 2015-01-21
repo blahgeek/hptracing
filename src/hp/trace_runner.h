@@ -49,17 +49,18 @@ namespace hp {
     public:
         TraceRunner(std::unique_ptr<hp::KDTree> & scene);
 
-        std::vector<unsigned char> run(cl_float3 view_p,
-                                       cl_float3 top_dir,
-                                       cl_float3 right_dir,
-                                       cl_float width,
-                                       cl_float height,
-                                       int sample_x, int sample_y,
-                                       int supersample_x, int supersample_y,
-                                       int sample = 10,
-                                       int depth = 6,
-                                       int disable_diffuse = 0,
-                                       cl_float brightness = 1.0);
+        void run(unsigned char * result_data,
+                 cl_float3 view_p,
+                 cl_float3 top_dir,
+                 cl_float3 right_dir,
+                 cl_float width,
+                 cl_float height,
+                 int sample_x, int sample_y,
+                 int supersample_x, int supersample_y,
+                 int sample = 10,
+                 int depth = 6,
+                 int disable_diffuse = 0,
+                 cl_float brightness = 1.0);
     };
 
 }
