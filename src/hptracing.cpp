@@ -70,11 +70,16 @@ static void runit() {
     hp_log("Rendering image... %dx%d, %d samples, max-depth %d",
            width, height, sample, depth);
     TickTock timer;
-    runner->run(pixels, view_point, up_dir, right_dir,
-                float(width) / float(height) * angle, angle,
-                width, height, supersample?2:1, supersample?2:1,
-                background_color,
-                sample, depth, no_diffuse?1:0, brightness);
+    try{
+        runner->run(pixels, view_point, up_dir, right_dir,
+                    float(width) / float(height) * angle, angle,
+                    width, height, supersample?2:1, supersample?2:1,
+                    background_color,
+                    sample, depth, no_diffuse?1:0, brightness);
+    } catch(cl::Error & err) {
+        hp_log("Catch error: %d: %s", err.err(), err.what());
+        hp_assert(false);
+    }
     timer.timeit("Render done");
 }
 

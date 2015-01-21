@@ -238,9 +238,15 @@ __kernel void naive_intersect(__global int * v_sizes,
 }
 
 __constant sampler_t sampler =
+#ifdef CL_VERSION_1_2
     CLK_NORMALIZED_COORDS_TRUE
     | CLK_ADDRESS_REPEAT
     | CLK_FILTER_LINEAR;
+#else
+    CLK_NORMALIZED_COORDS_FALSE
+    | CLK_ADDRESS_REPEAT
+    | CLK_FILTER_NEAREST;
+#endif
 
 __kernel void s1_run(__global int * v_sizes,
                      __global unit_data * v_data,
@@ -259,7 +265,8 @@ __kernel void s1_run(__global int * v_sizes,
                 #ifdef CL_VERSION_1_2
                      __read_only image2d_array_t textures,
                 #else
-                     __global unsigned char * textures,
+                     __read_only image3d_t textures,
+                     //__global unsigned char * textures,
                 #endif
                      const int disable_diffuse,
                      __global long * v_seed) {
@@ -311,11 +318,13 @@ __kernel void s1_run(__global int * v_sizes,
         ambient = read_imagef(textures, sampler, 
                               (float4)(uv.x, uv.y, mat.ambient_texture_id, 0)).xyz;
     #else
-        __global unsigned char * texture_p = textures + 4 * 512 * 512 * mat.ambient_texture_id
-                                             + (convert_int(uv.x * 512.f) * 512 + convert_int(uv.y * 512.f)) * 4;
-        ambient.x = convert_float(texture_p[0]) / 255.0f;
-        ambient.y = convert_float(texture_p[1]) / 255.0f;
-        ambient.z = convert_float(texture_p[2]) / 255.0f;
+        ambient = read_imagef(textures, sampler,
+                              (float4)(uv.x * 512.f, uv.y * 512.f, convert_float(mat.ambient_texture_id), 0)).xyz;
+        //__global unsigned char * texture_p = textures + 4 * 512 * 512 * mat.ambient_texture_id
+                                             //+ (convert_int(uv.x * 511.f) * 512 + convert_int(uv.y * 511.f)) * 4;
+        //ambient.x = convert_float(texture_p[0]) / 255.0f;
+        //ambient.y = convert_float(texture_p[1]) / 255.0f;
+        //ambient.z = convert_float(texture_p[2]) / 255.0f;
     #endif
     }
 
@@ -366,11 +375,13 @@ __kernel void s1_run(__global int * v_sizes,
         diffuse = read_imagef(textures, sampler, 
                               (float4)(uv.x, uv.y, mat.diffuse_texture_id, 0)).xyz;
     #else
-        __global unsigned char * texture_p = textures + 4 * 512 * 512 * mat.diffuse_texture_id
-                                             + (convert_int(uv.x * 512.f) * 512 + convert_int(uv.y * 512.f)) * 4;
-        diffuse.x = convert_float(texture_p[0]) / 255.0f;
-        diffuse.y = convert_float(texture_p[1]) / 255.0f;
-        diffuse.z = convert_float(texture_p[2]) / 255.0f;
+        diffuse = read_imagef(textures, sampler,
+                              (float4)(uv.x * 512.f, uv.y * 512.f, convert_float(mat.diffuse_texture_id), 0)).xyz;
+        //__global unsigned char * texture_p = textures + 4 * 512 * 512 * mat.diffuse_texture_id
+                                             //+ (convert_int(uv.x * 511.f) * 512 + convert_int(uv.y * 511.f)) * 4;
+        //diffuse.x = convert_float(texture_p[0]) / 255.0f;
+        //diffuse.y = convert_float(texture_p[1]) / 255.0f;
+        //diffuse.z = convert_float(texture_p[2]) / 255.0f;
     #endif
     }
 
