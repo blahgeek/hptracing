@@ -91,8 +91,8 @@ static void displayFunc() {
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glColor4f(0.f, 0.f, 0.5f, 0.5f);
-    glRecti(0, 0, 200, 210);
+    glColor4f(0.f, 0.f, 0.5f, 0.2f);
+    glRecti(0, 0, 180, 210);
 
     glColor3f(1.f, 1.f, 1.f);
     printString("hpTracing by BlahGeek", 195);
@@ -104,7 +104,7 @@ static void displayFunc() {
                 right_dir.s[0], right_dir.s[1], right_dir.s[2]), 140);
     printString(ssprintf("%dx%d, %d samples", width, height, sample), 115);
     printString(ssprintf("Translate step: %.2f", translate_step), 100);
-    printString(ssprintf("Max depth: %d", depth), 85);
+    printString(ssprintf("Max depth: %d, Angle: %.2f", depth, angle), 85);
     printString(ssprintf("No diffuse: %d", no_diffuse), 60);
     printString(ssprintf("Super-samp: %d", supersample), 45);
     printString(ssprintf("Brightness: %.2f", brightness), 30);
