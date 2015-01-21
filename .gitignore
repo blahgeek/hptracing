@@ -55,10 +55,14 @@ Temporary Items
 .apdisk
 
 hptest
+hptracing
 
 *.sublime-workspace
 build
 *.d
 
 *.cl.inc
+
+out.png
+out.ppm
 

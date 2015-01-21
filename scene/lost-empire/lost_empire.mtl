@@ -77,7 +77,7 @@ Ks 0 0 0
 map_Ka lost_empire-RGB.png
 map_Kd lost_empire-RGB.png
 illum 2
-Ke 0.3 0.05 0.01
+Ke 3.3 0.55 0.11
 # d 1
 # Tr 1
 
@@ -268,7 +268,7 @@ newmtl Torch
 Ns 0
 Ka 0.197647 0.197647 0
 Kd 0.988235 0.988235 0
-Ke 0.9 0.9 0.6
+Ke 9.9 9.9 6.6
 Ks 0 0 0
 map_Ka lost_empire-RGBA.png
 map_Kd lost_empire-RGBA.png
