@@ -19,6 +19,8 @@
 #include "hp/scene/kdtree.h"
 
 #include <Eigen/Dense>
+#define cimg_display 0
+#include "./CImg/CImg.h"
 
 #include "OptionParser/OptionParser.h"
 
@@ -215,7 +217,7 @@ int main(int argc, char **argv) {
     parser.add_option("-d", "--depth").dest("depth").type("int").set_default(6);
     parser.add_option("--brightness").dest("brightness").type("float").set_default(1.0);
     parser.add_option("--no-diffuse").dest("no-diffuse").action("store_true").set_default("0");
-    parser.add_option("-o", "--output").dest("output").set_default("out.ppm");
+    parser.add_option("-o", "--output").dest("output").set_default("");
 
     optparse::Values options = parser.parse_args(argc, argv);
     vector<string> args = parser.args();
@@ -239,38 +241,34 @@ int main(int argc, char **argv) {
     no_diffuse = (bool)options.get("no-diffuse");
     brightness = (float)options.get("brightness");
 
-    // init GLUT
-    glutInitWindowSize(width, height);
-    glutInitWindowPosition(0,0);
-    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
-    glutInit(&argc, argv);
-    glutCreateWindow("hpTracing by BlahGeek");
-    glutDisplayFunc(displayFunc);
-    glutTimerFunc(10, timerFunc, 0);
-    // glutIdleFunc(idleFunc);
-    glutKeyboardFunc(keyFunc);
-    glutSpecialFunc(specKeyFunc);
-    glViewport(0, 0, width, height);
-    glLoadIdentity();
-    glOrtho(0.f, width - 1.f, 0.f, height - 1.f, -1.f, 1.f);
+    if(options["output"].length() == 0) {
+        // init GLUT
+        glutInitWindowSize(width, height);
+        glutInitWindowPosition(0,0);
+        glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
+        glutInit(&argc, argv);
+        glutCreateWindow("hpTracing by BlahGeek");
+        glutDisplayFunc(displayFunc);
+        glutTimerFunc(10, timerFunc, 0);
+        // glutIdleFunc(idleFunc);
+        glutKeyboardFunc(keyFunc);
+        glutSpecialFunc(specKeyFunc);
+        glViewport(0, 0, width, height);
+        glLoadIdentity();
+        glOrtho(0.f, width - 1.f, 0.f, height - 1.f, -1.f, 1.f);
 
-    glutMainLoop();
-
-    // auto output_filename = options["output"];
-    // std::ofstream fout(output_filename.c_str());
-    // fout << "P3\n";
-    // fout << width << " " << height << "\n255\n";
-    // for(int i = 0 ; i < height ; i += 1) {
-    //     for(int j = 0 ; j < width ; j += 1) {
-    //         for(int k = 0 ; k < 3 ; k += 1)
-    //             fout << int(pixels[(i * width + j) * 4 + k]) << " ";
-    //     }
-    //     fout << "\n";
-    // }
-    // fout.close();
-
-    // timer.timeit("Write to output done");
-
+        glutMainLoop();
+    }
+    else {
+        // write to file
+        auto image = cimg_library::CImg<unsigned char>(width, height, 1, 3);
+        runit();
+        for(int y = 0 ; y < height ; y += 1)
+            for(int x = 0 ; x < width ; x += 1)
+                for(int k = 0 ; k < 3 ; k += 1)
+                    image(x, y, k) = pixels[(y * height + x) * 4 + k];
+        image.mirror('y').save(options["output"].c_str());
+    }
     return 0;
 }
 
