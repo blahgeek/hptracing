@@ -234,7 +234,12 @@ int main(int argc, char **argv) {
 
     auto scene = std::make_unique<KDTree>(options["input"]);
     timer.timeit("Build KDTree done.");
-    runner = std::make_unique<TraceRunner>(scene);
+    try{
+        runner = std::make_unique<TraceRunner>(scene);
+    } catch(cl::Error & err) {
+        hp_log("Catch error: %d: %s", err.err(), err.what());
+        hp_assert(false);
+    }
     timer.timeit("Init OpenCL hardware & memories done");
 
     view_point = str2float3(options["view"]);
