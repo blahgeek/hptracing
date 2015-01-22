@@ -85,14 +85,25 @@ TraceRunner::TraceRunner(std::unique_ptr<hp::KDTree> & scene) {
                                         cl::ImageFormat(CL_RGBA, CL_UNORM_INT8),
                                         1, 1, 1, 0, 0);
 #else
-    if(scene->texture_names.size() > 0)
+    hp_log("texture size: %d", scene->texture_names.size());
+    if(scene->texture_names.size() > 1)
         texture_mem = cl::Image3D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                                   cl::ImageFormat(CL_RGBA, CL_UNORM_INT8), 
                                   Scene::texture_width, Scene::texture_height,
                                   scene->texture_names.size(), 0, 0, scene->texture_data.data());
-        //texture_mem = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                                 //4 * Scene::texture_width * Scene::texture_height * scene->texture_names.size(),
-                                 //scene->texture_data.data());
+    else if(scene->texture_names.size() == 1) {
+        unsigned char * tmp_data = new unsigned char [2 * Scene::texture_width * Scene::texture_height * 4];
+        memcpy(tmp_data, scene->texture_data.data(), scene->texture_data.size());
+        texture_mem = cl::Image3D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                                  cl::ImageFormat(CL_RGBA, CL_UNORM_INT8), 
+                                  Scene::texture_width, Scene::texture_height,
+                                  2, 0, 0, tmp_data);
+        delete [] tmp_data;
+    }
+    else texture_mem = cl::Image3D(context, CL_MEM_READ_ONLY,
+                                   cl::ImageFormat(CL_RGBA, CL_UNORM_INT8),
+                                   Scene::texture_width, Scene::texture_height,
+                                   2, 0, 0);
 #endif
 }
 
