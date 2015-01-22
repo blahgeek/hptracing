@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-18
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-21
+* @Last Modified time: 2015-01-22
 */
 
 #ifdef __APPLE__
@@ -275,7 +275,7 @@ int main(int argc, char **argv) {
         for(int y = 0 ; y < height ; y += 1)
             for(int x = 0 ; x < width ; x += 1)
                 for(int k = 0 ; k < 3 ; k += 1)
-                    image(x, y, k) = pixels[(y * height + x) * 4 + k];
+                    image(x, y, k) = pixels[(y * width + x) * 4 + k];
         image.mirror('y').save(options["output"].c_str());
     }
     return 0;
