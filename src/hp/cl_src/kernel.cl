@@ -317,6 +317,7 @@ __kernel void s1_run(__global int * v_sizes,
                  area2 * scene_texcoords[s1.geometry.y] +
                  area3 * scene_texcoords[s1.geometry.z];
         }
+        uv.y = 1.f - uv.y;
     }
 
     float3 ambient = mat.ambient;
