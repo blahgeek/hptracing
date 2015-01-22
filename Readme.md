@@ -41,7 +41,7 @@ GUI模式下，键盘操作说明：
 
 ## 结果样例
 
-GUI操作视频见`records.mov`，可以看到实时的视角变换。为了能够实时渲染，该样例中采样率很低且追踪深度较小，包含躁点较多。以下是一些非实时渲染的结果.
+GUI操作视频见`records.mov`，可以看到实时的视角变换。为了能够实时渲染，该样例中采样率很低且追踪深度较小，包含躁点较多。以下是一些非实时渲染的结果（运行时间在Nvidia Tesla K20m上测得）。
 
 经典的Cornell box场景，5000次采样（本文开头的图片为10000次采样的结果），渲染时间1350秒。可以注意到真实的折射（注意左边方块后方的折射光线效果）、全反射、软阴影、漫反射（注意天花板）效果。
 
@@ -55,6 +55,8 @@ GUI操作视频见`records.mov`，可以看到实时的视角变换。为了能�
 
 ![Complex Cornell Box](./scene/cornell-box/5000.d6.x.400ms.png)
 
+![Complex Cornell Box 2](./scene/cornell-box/5000.d6.x.2.png)
+
 更复杂的场景：1000次采样，渲染时间1663秒，可以注意到纹理、光线和软阴影效果。
 
 ![sponza](./scene/dabrovic-sponza/1000.d8.x.2.png)
@@ -66,6 +68,8 @@ GUI操作视频见`records.mov`，可以看到实时的视角变换。为了能�
 ![glossy](./scene/cornell-box-orig/glossy.out.png)
 
 ![sphere](./scene/cornell-box-orig/sphere.out.png)
+
+![misuba](./scene/mitsuba/5000.d6.x.png)
 
 
 ## 具体实现
@@ -143,5 +147,6 @@ $$ N_P = \frac{N_A * A_{PBC} + N_B * A_{PAC} + N_C * A_{PAB}}{A_{ABC}} $$
 - [tinyobjloader](https://github.com/syoyo/tinyobjloader)用于读取OBJ文件
 - [CImg](http://cimg.sourceforge.net)用于读写图片文件
 - [OptionParser](https://github.com/weisslj/cpp-argparse/)用于解析命令行参数
+- [Eigen](http://eigen.tuxfamily.org/dox/group__TutorialMatrixArithmetic.html)用于矩阵运算
 
 另外，样例中的场景来自于[McGuire Graphics Data](http://graphics.cs.williams.edu/data/meshes.xml)
