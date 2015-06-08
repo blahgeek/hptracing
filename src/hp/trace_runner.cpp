@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-21
+* @Last Modified time: 2015-06-08
 */
 
 #include <iostream>
@@ -45,11 +45,11 @@ TraceRunner::TraceRunner(std::unique_ptr<hp::KDTree> & scene) {
     hp_log("devices: %d", devices.size());
 
     std::string sources;
-    sources.resize(src_hp___cl_src_types_h_cl_len + src_hp___cl_src_kernel_cl_len);
+    sources.resize(src_hp_cl_src_types_h_cl_len + src_hp_cl_src_kernel_cl_len);
     memcpy(static_cast<void *>(&sources.front()), 
-           src_hp___cl_src_types_h_cl, src_hp___cl_src_types_h_cl_len);
-    memcpy(static_cast<void *>(&sources.front() + src_hp___cl_src_types_h_cl_len),
-           src_hp___cl_src_kernel_cl, src_hp___cl_src_kernel_cl_len);
+           src_hp_cl_src_types_h_cl, src_hp_cl_src_types_h_cl_len);
+    memcpy(static_cast<void *>(&sources.front() + src_hp_cl_src_types_h_cl_len),
+           src_hp_cl_src_kernel_cl, src_hp_cl_src_kernel_cl_len);
 
     try {
         program = cl::Program(context, sources);

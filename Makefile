@@ -32,7 +32,7 @@ all: $(TARGET)
 
 -include $(DEPFILES)
 
-$(BUILD_DIR)/hp/trace_runner.o: $(CL_INCS)
+$(BUILD_DIR)/src/hp/trace_runner.o: $(CL_INCS)
 
 $(BUILD_DIR)/%.o: %.$(SRC_EXT)
 	@echo "[cxx] $< ..."
