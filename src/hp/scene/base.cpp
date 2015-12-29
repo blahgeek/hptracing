@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-21
+* @Last Modified time: 2015-12-29
 */
 
 #include <iostream>
@@ -34,11 +34,12 @@ using namespace hp;
 int Scene::texture_width = 512;
 int Scene::texture_height = 512;
 
-Scene::Scene(std::string filename) {
+Scene::Scene(std::string filename, std::string mtl_basepath) {
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> mats;
 
-    auto err = tinyobj::LoadObj(shapes, mats, filename.c_str());
+    auto err = tinyobj::LoadObj(shapes, mats, filename.c_str(), 
+                                mtl_basepath.length() == 0 ? NULL : mtl_basepath.c_str());
 
     if(!err.empty())
         throw err;
@@ -54,6 +55,8 @@ Scene::Scene(std::string filename) {
         x.shininess = mat.shininess;
         x.diffuse_texture_id = -1;
         x.ambient_texture_id = -1;
+
+        hp_log("Reading material %s", mat.name.c_str());
 
         if(mat.diffuse_texname.length() > 0) {
             auto found = std::find(texture_names.begin(),
@@ -93,8 +96,9 @@ Scene::Scene(std::string filename) {
     }
 
     for(auto & texture_name: texture_names) {
-        hp_log("Reading texture %s", texture_name.c_str());
-        auto image = cimg_library::CImg<>(texture_name.c_str())
+        std::string texture_path = mtl_basepath + texture_name;
+        hp_log("Reading texture %s", texture_path.c_str());
+        auto image = cimg_library::CImg<>(texture_path.c_str())
                      .normalize(0, 255).resize(texture_width, texture_height, 1, 3);
         for(int i = 0 ; i < texture_height ; i += 1) {
             for(int j = 0 ; j < texture_width ; j += 1) {

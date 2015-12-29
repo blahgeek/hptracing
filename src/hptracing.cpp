@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-18
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-22
+* @Last Modified time: 2015-12-29
 */
 
 #ifdef __APPLE__
@@ -213,6 +213,7 @@ static void specKeyFunc(int key, int x, int y) {
 int main(int argc, char **argv) {
     OptionParser parser = OptionParser().description("HPTracing 0.0.1");
     parser.add_option("-i", "--input").dest("input");
+    parser.add_option("--mtl").dest("mtl_basepath").set_default("");
     parser.add_option("--width").dest("width").type("int").set_default(500);
     parser.add_option("--height").dest("height").type("int").set_default(500);
     parser.add_option("--view").dest("view").set_default("0,0,-500");
@@ -232,7 +233,17 @@ int main(int argc, char **argv) {
 
     TickTock timer;
 
-    auto scene = std::make_unique<KDTree>(options["input"]);
+    std::string input_path = options["input"];
+    std::string mtl_basepath = options["mtl_basepath"];
+    if(mtl_basepath.length() == 0) {
+        auto pos = input_path.rfind('/');
+        if(pos > 0) {
+            mtl_basepath = input_path.substr(0, pos + 1);
+            hp_log("MTL basepath: %s", mtl_basepath.c_str());
+        }
+    }
+
+    auto scene = std::make_unique<KDTree>(options["input"], mtl_basepath);
     timer.timeit("Build KDTree done.");
     try{
         runner = std::make_unique<TraceRunner>(scene);

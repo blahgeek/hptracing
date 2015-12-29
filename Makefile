@@ -25,7 +25,7 @@ CXXSOURCES = $(shell find -L src -name "*.$(SRC_EXT)")
 OBJS = $(addprefix $(BUILD_DIR)/,$(CXXSOURCES:.$(SRC_EXT)=.o))
 DEPFILES = $(OBJS:.o=.d)
 
-CL_SOURCES = $(shell find -L src -name "*.cl")
+CL_SOURCES = src/hp/cl_src/kernel.cl src/hp/cl_src/types.h.cl
 CL_INCS = $(CL_SOURCES:.cl=.cl.inc)
 
 all: $(TARGET)
@@ -48,10 +48,10 @@ $(TARGET): $(OBJS)
 	$(V)$(CXX) $^ -o $@ -lpthread $(LDFLAGS)
 
 clean:
-	rm -rf $(BUILD_DIR)/src $(TARGET)
+	rm -rf $(BUILD_DIR)/src $(TARGET) $(CL_INCS)
 
-clean-full:
-	rm -rf $(BUILD_DIR) $(TARGET)
+clean-full: clean
+	rm -rf $(BUILD_DIR)
 
 gdb: 
 	OPTFLAG=-O0 make -j4

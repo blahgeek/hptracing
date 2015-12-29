@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-14
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-20
+* @Last Modified time: 2015-12-29
 */
 
 #include <iostream>
@@ -232,7 +232,8 @@ int KDTree::Node::debugPrint(int depth, int id) {
     return id;
 }
 
-KDTree::KDTree(std::string filename): Scene(filename) {
+KDTree::KDTree(std::string filename, std::string mtl_basepath): 
+Scene(filename, mtl_basepath) {
     this->root = std::make_unique<KDTree::Node>(this->points, this->geometries);
     for(size_t i = 0 ; i < this->geometries.size() ; i += 1)
         this->root->geo_indexes.push_back(i);

@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-14
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-01-20
+* @Last Modified time: 2015-12-29
 */
 
 #ifndef __hp_scene_cl_kdtree_h__
@@ -53,7 +53,7 @@ namespace hp {
 
     public:
         std::unique_ptr<Node> root = nullptr;
-        KDTree(std::string filename);
+        KDTree(std::string filename, std::string mtl_basepath="");
         std::pair<std::vector<KDTreeNodeHeader>, std::vector<cl_int>>
             getData();
     };
