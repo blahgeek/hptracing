@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-06-08
+* @Last Modified time: 2015-12-29
 */
 
 #include <iostream>
@@ -128,11 +128,20 @@ void TraceRunner::run(unsigned char * result_data,
 
     cl::Buffer data_initial_mem(context, CL_MEM_READ_WRITE,
                                 sizeof(unit_data) * ray_count);
-    cl::Kernel kernel_set(program, "set_viewdirs");
-    setKernelArgs(kernel_set, view_p, top_dir, right_dir,
-                  width, height, 
-                  sample_x * supersample_x, sample_y * supersample_y,
-                  data_initial_mem);
+    cl::Kernel kernel_set;
+    if(height < 0) {
+        hp_log("Using VR projection mode");
+        hp_assert(sample_x == sample_y * 2, "sample_x must be double of sample_y");
+
+        kernel_set = cl::Kernel(program, "set_viewdirs_vr");
+        setKernelArgs(kernel_set, view_p, sample_y, data_initial_mem);
+    } else {
+        kernel_set = cl::Kernel(program, "set_viewdirs");
+        setKernelArgs(kernel_set, view_p, top_dir, right_dir,
+                      width, height, 
+                      sample_x * supersample_x, sample_y * supersample_y,
+                      data_initial_mem);
+    }
     queue.enqueueNDRangeKernel(kernel_set, 0, 
                                cl::NDRange(sample_x * supersample_x, sample_y * supersample_y));
     queue.finish();
