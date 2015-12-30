@@ -408,6 +408,8 @@ __kernel void s1_run(__global int * v_sizes,
 
 }
 
+#define STEP_EPSILON 1e-5f
+
 __kernel void s2_refract_run(__global int * v_sizes,
                              __global unit_data * v_data,
                              __global int * v_s2_refract,
@@ -442,7 +444,7 @@ __kernel void s2_refract_run(__global int * v_sizes,
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
     v_s0[index] = this_id;
 
-    v_data[this_id].start_p = s2.intersect_p + 0.5f * final_dir;
+    v_data[this_id].start_p = s2.intersect_p + STEP_EPSILON * final_dir;
     v_data[this_id].in_dir = final_dir;
 }
 
@@ -471,7 +473,7 @@ __kernel void s2_specular_run(__global int * v_sizes,
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
     v_s0[index] = this_id;
 
-    v_data[this_id].start_p = s2.intersect_p + 0.5f * reflection_dir;
+    v_data[this_id].start_p = s2.intersect_p + STEP_EPSILON * reflection_dir;
     v_data[this_id].in_dir = reflection_dir;
 }
 
@@ -502,7 +504,7 @@ __kernel void s2_diffuse_run(__global int * v_sizes,
     v_s0[index] = this_id;
 
     v_data[this_id].strength = strength;
-    v_data[this_id].start_p = s2.intersect_p + 0.5f * p;
+    v_data[this_id].start_p = s2.intersect_p + STEP_EPSILON * p;
     v_data[this_id].in_dir = p;
     v_seed[global_id] = rand_seed;
 }
@@ -548,7 +550,7 @@ __kernel void s2_light_run(__global int * v_sizes,
 
         v_s0[index] = this_id;
         v_data[this_id].strength = s2.strength * fabs(dot_);
-        v_data[this_id].start_p = s2.intersect_p + 0.5f * p;
+        v_data[this_id].start_p = s2.intersect_p + STEP_EPSILON * p;
         v_data[this_id].in_dir = p;
     }
     v_seed[global_id] = rand_seed;
