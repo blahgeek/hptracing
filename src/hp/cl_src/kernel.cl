@@ -584,15 +584,9 @@ __kernel void set_viewdirs(const float3 view_p,
     result[index].start_p = view_p;
 }
 
-inline float3 lonlat_to_dir(float lon, float lat) {
-    float3 dir;
-    dir.x = cos(lat) * cos(lon);
-    dir.y = sin(lat);
-    dir.z = cos(lat) * sin(lon);
-    return normalize(dir);
-}
-
 __kernel void set_viewdirs_vr(const float3 view_p,
+//                              const float3 top_dir,
+//                              const float3 right_dir,
                               const int sample_y,
                               __global unit_data * result) {
 
@@ -607,40 +601,17 @@ __kernel void set_viewdirs_vr(const float3 view_p,
     float lon = convert_float(global_id_x) / convert_float(sample_x) * PI * 2 - PI;
     float lat = convert_float(global_id_y) / convert_float(sample_y) * PI - PI / 2.0;
 
+    float3 dir;
+    dir.x = cos(lat) * cos(lon);
+    dir.y = sin(lat);
+    dir.z = cos(lat) * sin(lon);
+
+//    int index= (sample_y - 1 - global_id_y) * sample_x + global_id_x;
     int index = sample_x * global_id_y + global_id_x;
-    result[index].in_dir = lonlat_to_dir(lon, lat);
+    result[index].in_dir = normalize(dir);
     result[index].orig_id = index;
     result[index].strength = (float3)(1, 1, 1);
     result[index].start_p = view_p;
-}
-
-__kernel void set_viewdirs_vr_stereo(const float3 view_p,
-                                     const int sample_y,
-                                     const float eye_distance,
-                                     __global unit_data * result) {
-    const int sample_x = sample_y;
-    const int sample_y_half = sample_y / 2;
-
-    int global_id_x = get_global_id(0);
-    int global_id_y = get_global_id(1);
-
-    if(global_id_x > sample_x || global_id_y > sample_y)
-        return;
-
-    float lon = convert_float(global_id_x) / convert_float(sample_x) * PI * 2 - PI;
-    float lat = convert_float(global_id_y % sample_y_half) / convert_float(sample_y_half) * PI - PI / 2.0;
-
-    float3 eye_shift = (float3)(cos(lon), sin(lon), 0);
-    if(global_id_y < sample_y_half)
-        eye_shift = -eye_shift;
-    eye_shift *= eye_distance;
-
-    int index = sample_x * global_id_y + global_id_x;
-    result[index].in_dir = lonlat_to_dir(lon, lat);
-    result[index].orig_id = index;
-    result[index].strength = (float3)(1, 1, 1);
-    result[index].start_p = view_p + eye_shift;
-
 }
 
 __kernel void get_image(__global float * result_mem,
