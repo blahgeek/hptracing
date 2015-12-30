@@ -2,7 +2,7 @@
 * @Author: BlahGeek
 * @Date:   2015-01-10
 * @Last Modified by:   BlahGeek
-* @Last Modified time: 2015-12-30
+* @Last Modified time: 2015-12-31
 */
 
 #include <iostream>
@@ -130,12 +130,14 @@ void TraceRunner::run(unsigned char * result_data,
                                 sizeof(unit_data) * ray_count);
     cl::Kernel kernel_set;
     if(height < 0) {
-        hp_log("Using VR projection mode");
-        hp_assert(sample_x * supersample_x == sample_y * 2 * supersample_y, 
-                  "sample_x must be double of sample_y");
+        int shift = int(right_dir.s[0]);
+        hp_log("Using VR projection mode, shift = %d", shift);
+        // hp_assert(sample_x * supersample_x == sample_y * 2 * supersample_y, 
+        //           "sample_x must be double of sample_y");
 
         kernel_set = cl::Kernel(program, "set_viewdirs_vr");
-        setKernelArgs(kernel_set, view_p, sample_y * supersample_y, data_initial_mem);
+        setKernelArgs(kernel_set, view_p, shift * supersample_x,
+                      sample_x * supersample_y, sample_y * supersample_y, data_initial_mem);
     } else {
         kernel_set = cl::Kernel(program, "set_viewdirs");
         setKernelArgs(kernel_set, view_p, top_dir, right_dir,

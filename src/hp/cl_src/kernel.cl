@@ -585,12 +585,10 @@ __kernel void set_viewdirs(const float3 view_p,
 }
 
 __kernel void set_viewdirs_vr(const float3 view_p,
-//                              const float3 top_dir,
-//                              const float3 right_dir,
+                              const int x_shift,
+                              const int sample_x,
                               const int sample_y,
                               __global unit_data * result) {
-
-    const int sample_x = sample_y * 2;
 
     int global_id_x = get_global_id(0);
     int global_id_y = get_global_id(1);
@@ -598,7 +596,7 @@ __kernel void set_viewdirs_vr(const float3 view_p,
     if(global_id_x > sample_x || global_id_y > sample_y)
         return;
 
-    float lon = convert_float(global_id_x) / convert_float(sample_x) * PI * 2 - PI;
+    float lon = convert_float(global_id_x + x_shift) / convert_float(sample_y * 2) * PI * 2 - PI;
     float lat = convert_float(global_id_y) / convert_float(sample_y) * PI - PI / 2.0;
 
     float3 dir;
