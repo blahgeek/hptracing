@@ -604,7 +604,7 @@ __kernel void set_viewdirs_vr(const float3 view_p,
     float3 dir;
     dir.x = cos(lat) * cos(lon);
     dir.y = sin(lat);
-    dir.z = -cos(lat) * sin(lon);
+    dir.z = cos(lat) * sin(lon);
 
 //    int index= (sample_y - 1 - global_id_y) * sample_x + global_id_x;
     int index = sample_x * global_id_y + global_id_x;
