@@ -130,12 +130,17 @@ void TraceRunner::run(unsigned char * result_data,
                                 sizeof(unit_data) * ray_count);
     cl::Kernel kernel_set;
     if(height < 0) {
-        hp_log("Using VR projection mode");
-        hp_assert(sample_x * supersample_x == sample_y * 2 * supersample_y, 
-                  "sample_x must be double of sample_y");
-
-        kernel_set = cl::Kernel(program, "set_viewdirs_vr");
-        setKernelArgs(kernel_set, view_p, sample_y * supersample_y, data_initial_mem);
+        if(sample_x * supersample_x == sample_y * supersample_y) {
+            hp_log("Using VR Stereo projection mode, eye distance = %.2f", right_dir.s[0]);
+            kernel_set = cl::Kernel(program, "set_viewdirs_vr_stereo");
+            setKernelArgs(kernel_set, view_p, sample_y * supersample_y, right_dir.s[0], data_initial_mem);
+        } else if (sample_x * supersample_x == sample_y * 2 * supersample_y) {
+            hp_log("Using VR projection mode");
+            kernel_set = cl::Kernel(program, "set_viewdirs_vr");
+            setKernelArgs(kernel_set, view_p, sample_y * supersample_y, data_initial_mem);
+        } else {
+            hp_assert(false, "Angle == -1 but invalid width/height");
+        }
     } else {
         kernel_set = cl::Kernel(program, "set_viewdirs");
         setKernelArgs(kernel_set, view_p, top_dir, right_dir,
