@@ -576,7 +576,8 @@ __kernel void set_viewdirs(const float3 view_p,
     norm_dir += right_dir * (convert_float(global_id_x) / convert_float(sample_x)
                              * width - width * 0.5f);
 
-    int index = (sample_y - 1 - global_id_y) * sample_x + global_id_x;
+//    int index = (sample_y - 1 - global_id_y) * sample_x + global_id_x;
+    int index = sample_x * global_id_y + global_id_x;
     result[index].in_dir = normalize(norm_dir);
     result[index].orig_id = index;
     result[index].strength = (float3)(1, 1, 1);
@@ -605,7 +606,8 @@ __kernel void set_viewdirs_vr(const float3 view_p,
     dir.y = sin(lat);
     dir.z = -cos(lat) * sin(lon);
 
-    int index= (sample_y - 1 - global_id_y) * sample_x + global_id_x;
+//    int index= (sample_y - 1 - global_id_y) * sample_x + global_id_x;
+    int index = sample_x * global_id_y + global_id_x;
     result[index].in_dir = normalize(dir);
     result[index].orig_id = index;
     result[index].strength = (float3)(1, 1, 1);
@@ -630,8 +632,11 @@ __kernel void get_image(__global float * result_mem,
     float4 pixel = (float4)(0, 0, 0, 0);
     for(int i = 0 ; i < supersample_x ; i += 1) {
         for(int j = 0 ; j < supersample_y ; j += 1) {
-            int index = (global_id_y * supersample_y) * (width * supersample_x)
-                        + global_id_x * supersample_x;
+            int row = global_id_y * supersample_y + j;
+            int col = global_id_x * supersample_x + i;
+            int index = row * width * supersample_x + col;
+//            int index = (global_id_y * supersample_y) * (width * supersample_x)
+//                        + global_id_x * supersample_x;
             pixel.x += result_mem[index * 3];
             pixel.y += result_mem[index * 3 + 1];
             pixel.z += result_mem[index * 3 + 2];
@@ -645,5 +650,5 @@ __kernel void get_image(__global float * result_mem,
     pixel.y = 1.f - exp(-pixel.y);
     pixel.z = 1.f - exp(-pixel.z);
 
-    write_imagef(img, (int2)(global_id_x, height - 1 - global_id_y), pixel);
+    write_imagef(img, (int2)(global_id_x, global_id_y), pixel);
 }
