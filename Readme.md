@@ -2,6 +2,8 @@
 
 ![](./scene/simple-cornell-box/10000.d10.x.10550s.png)
 
+![](./scene/vr-scene/result.jpg)
+
 `hpTracing`是一个基于OpenCL的全局光照渲染程序，使用蒙特卡罗光线追踪（Monte Carlo path tracing），主要特点有：
 
 - 实时的渲染和显示，通过键盘调整视角和位置等；也可以输出至图片文件
@@ -9,6 +11,7 @@
 - 使用SAH KD-Tree加速
 - 支持所有光照效果：漫反射、镜面反射、折射（全反射）、环境光等
 - 支持纹理映射
+- 支持VR全景图片生成，可以在Samsung Gear VR等设备上观看
 - 等等……
 
 ## 编译和运行
