@@ -408,6 +408,8 @@ __kernel void s1_run(__global int * v_sizes,
 
 }
 
+#define STEP_EPSILON 1e-5f
+
 __kernel void s2_refract_run(__global int * v_sizes,
                              __global unit_data * v_data,
                              __global int * v_s2_refract,
@@ -442,7 +444,7 @@ __kernel void s2_refract_run(__global int * v_sizes,
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
     v_s0[index] = this_id;
 
-    v_data[this_id].start_p = s2.intersect_p + 0.5f * final_dir;
+    v_data[this_id].start_p = s2.intersect_p + STEP_EPSILON * final_dir;
     v_data[this_id].in_dir = final_dir;
 }
 
@@ -471,7 +473,7 @@ __kernel void s2_specular_run(__global int * v_sizes,
     int index = atomic_inc(v_sizes + S0_SIZE_OFFSET);
     v_s0[index] = this_id;
 
-    v_data[this_id].start_p = s2.intersect_p + 0.5f * reflection_dir;
+    v_data[this_id].start_p = s2.intersect_p + STEP_EPSILON * reflection_dir;
     v_data[this_id].in_dir = reflection_dir;
 }
 
@@ -502,7 +504,7 @@ __kernel void s2_diffuse_run(__global int * v_sizes,
     v_s0[index] = this_id;
 
     v_data[this_id].strength = strength;
-    v_data[this_id].start_p = s2.intersect_p + 0.5f * p;
+    v_data[this_id].start_p = s2.intersect_p + STEP_EPSILON * p;
     v_data[this_id].in_dir = p;
     v_seed[global_id] = rand_seed;
 }
@@ -548,7 +550,7 @@ __kernel void s2_light_run(__global int * v_sizes,
 
         v_s0[index] = this_id;
         v_data[this_id].strength = s2.strength * fabs(dot_);
-        v_data[this_id].start_p = s2.intersect_p + 0.5f * p;
+        v_data[this_id].start_p = s2.intersect_p + STEP_EPSILON * p;
         v_data[this_id].in_dir = p;
     }
     v_seed[global_id] = rand_seed;
@@ -574,8 +576,37 @@ __kernel void set_viewdirs(const float3 view_p,
     norm_dir += right_dir * (convert_float(global_id_x) / convert_float(sample_x)
                              * width - width * 0.5f);
 
-    int index = (sample_y - 1 - global_id_y) * sample_x + global_id_x;
+//    int index = (sample_y - 1 - global_id_y) * sample_x + global_id_x;
+    int index = sample_x * global_id_y + global_id_x;
     result[index].in_dir = normalize(norm_dir);
+    result[index].orig_id = index;
+    result[index].strength = (float3)(1, 1, 1);
+    result[index].start_p = view_p;
+}
+
+__kernel void set_viewdirs_vr(const float3 view_p,
+                              const int x_shift,
+                              const int sample_x,
+                              const int sample_y,
+                              __global unit_data * result) {
+
+    int global_id_x = get_global_id(0);
+    int global_id_y = get_global_id(1);
+
+    if(global_id_x > sample_x || global_id_y > sample_y)
+        return;
+
+    float lon = convert_float(global_id_x + x_shift) / convert_float(sample_y * 2) * PI * 2 - PI;
+    float lat = convert_float(global_id_y) / convert_float(sample_y) * PI - PI / 2.0;
+
+    float3 dir;
+    dir.x = cos(lat) * cos(lon);
+    dir.y = sin(lat);
+    dir.z = cos(lat) * sin(lon);
+
+//    int index= (sample_y - 1 - global_id_y) * sample_x + global_id_x;
+    int index = sample_x * global_id_y + global_id_x;
+    result[index].in_dir = normalize(dir);
     result[index].orig_id = index;
     result[index].strength = (float3)(1, 1, 1);
     result[index].start_p = view_p;
@@ -599,8 +630,11 @@ __kernel void get_image(__global float * result_mem,
     float4 pixel = (float4)(0, 0, 0, 0);
     for(int i = 0 ; i < supersample_x ; i += 1) {
         for(int j = 0 ; j < supersample_y ; j += 1) {
-            int index = (global_id_y * supersample_y) * (width * supersample_x)
-                        + global_id_x * supersample_x;
+            int row = global_id_y * supersample_y + j;
+            int col = global_id_x * supersample_x + i;
+            int index = row * width * supersample_x + col;
+//            int index = (global_id_y * supersample_y) * (width * supersample_x)
+//                        + global_id_x * supersample_x;
             pixel.x += result_mem[index * 3];
             pixel.y += result_mem[index * 3 + 1];
             pixel.z += result_mem[index * 3 + 2];
@@ -614,5 +648,5 @@ __kernel void get_image(__global float * result_mem,
     pixel.y = 1.f - exp(-pixel.y);
     pixel.z = 1.f - exp(-pixel.z);
 
-    write_imagef(img, (int2)(global_id_x, height - 1 - global_id_y), pixel);
+    write_imagef(img, (int2)(global_id_x, global_id_y), pixel);
 }

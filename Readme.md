@@ -2,6 +2,8 @@
 
 ![](./scene/simple-cornell-box/10000.d10.x.10550s.png)
 
+![](./scene/vr-scene/result.jpg)
+
 `hpTracing`是一个基于OpenCL的全局光照渲染程序，使用蒙特卡罗光线追踪（Monte Carlo path tracing），主要特点有：
 
 - 实时的渲染和显示，通过键盘调整视角和位置等；也可以输出至图片文件
@@ -9,6 +11,7 @@
 - 使用SAH KD-Tree加速
 - 支持所有光照效果：漫反射、镜面反射、折射（全反射）、环境光等
 - 支持纹理映射
+- 支持VR全景图片生成，可以在Samsung Gear VR等设备上观看
 - 等等……
 
 ## 编译和运行
@@ -17,7 +20,7 @@
 
 运行命令为：
 
-```
+``` 
 ./hptracing -i input.obj [OPTIONS]
 ```
 
@@ -25,7 +28,7 @@
 
 - `-i input.obj`：指定输入的Wavefront OBJ格式文件；相应的`.mtl`文件应在当前路径下
 - `--width, --height`：设置输出图片的长和宽，默认为500x500
-- `--view, --up, --right, --angle`：设置视角和位置
+- `--view, --up, --right, --angle`：设置视角和位置，当angle为－1时为VR模式
 - `-x`：使用超采样来抗锯齿
 - `-s`：每个像素点的采样次数
 - `-d`：最大迭代深度
@@ -72,6 +75,7 @@ GUI操作视频见`records.mov`，可以看到实时的视角变换。为了能�
 ![misuba](./scene/mitsuba/5000.d6.x.png)
 
 
+
 ## 具体实现
 
 ### 光线追踪算法
@@ -90,7 +94,7 @@ GPU相当于一个数据宽度非常宽的SIMD处理器，即多个运算单元�
 
 根据这些OpenCL的特点，在程序中定义一个包含单个交点信息的数据结构，每一个计算单元能够在这个数据结构上单独进行计算。在OpenCL上的光线追踪算法伪代码如下：
 
-```
+``` 
 typedef struct {
     View ray
     Intersection point
@@ -134,10 +138,17 @@ $$ N_P = \frac{N_A * A_{PBC} + N_B * A_{PAC} + N_C * A_{PAB}}{A_{ABC}} $$
 
 其中$A$表示三角形的面积。相应的，该点的纹理映射坐标也类似的根据ABC三点的纹理映射坐标确定。
 
+### 全景图片的生成
+
+使用VR头盔观看的图片需要包含各个方向的图像（可以看作视点在球心的一个球面上的图像）。由于光线追踪渲染方式的特性，支持全景图片的生成非常简单，只需要计算各个方向的像素值即可。
+
+全景图像的保存方式使用各种VR图片浏览器通用的equirectangular投影模型，即将一个球面以将经线和纬线拉直的方式投影至一个2:1的长方形图像上，如下：
+
+$x=\frac{lon}{2\pi}+0.5, y=\frac{lat}{\pi}+0.5$
 
 ## 参考文献
 
-- "Stackless KD-Tree Traversal for High Performance GPU Ray Tracing"", Stefan Popov et al, Eurographics 2007
+- "Stackless KD-Tree Traversal for High Performance GPU Ray Tracing", Stefan Popov et al, Eurographics 2007
 - "The OpenCL Programming Book", Ryoji Tsuchiyama et al, Fixstars
 - [SAH Kd Trees](https://graphics.cg.uni-saarland.de/fileadmin/cguds/courses/ws1011/cg1/rc/Garrido_web/project/sahkdtree.html)
 - [WaveFront Material (.mtl) File Format](http://www.fileformat.info/format/material/)
